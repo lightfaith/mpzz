@@ -29,3 +29,9 @@
 
 # Old folder
 old/*
+
+# Large files
+gen/9000.gml
+
+# Benchmark folder
+benchmark/*

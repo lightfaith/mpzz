@@ -1,27 +1,25 @@
 #include "classes.hpp"
 
-Node::Node(string sid)
+Node::Node(char* sid)
 {
 	this->sid=sid;
-	debug(9, "Creating node %s", sid.c_str());
+	debug(9, "Creating node %s", sid);
 	predecessor=NULL;
 	hopcount=INT_MAX;
 }
 
 Node::~Node()
 {
-	//debug("Freeing node %s (#%d)", sid.c_str(), id);
-	debug(9, "Freeing node %s", sid.c_str());
+	debug(9, "Freeing node %s", sid);
+	memory->Free(sid);
 	memory->Free(neighbors);
 }
 
 void Node::Print()
 {
-	//printf("  Node %s (#%d)\n", sid.c_str(), id);
-	debug(2, "  Node %s", sid.c_str());
+	debug(2, "  Node %s", sid);
 	for(int i=0; i<neighbors->count; i++)
-		//printf("    Neighbor %s (#%d), distance %.3f\n", neighbors->nodes[i]->sid.c_str(), 		neighbors->nodes[i]->id, neighbors->metrics[i]);
-		debug(2, "    Neighbor %s, distance %.3f", neighbors->nodes[i]->sid.c_str(), neighbors->metrics[i]);
+		debug(2, "    Neighbor %s, distance %.3f", neighbors->nodes[i]->sid, neighbors->metrics[i]);
 }
 
 void Node::SetPredecessor(Node* n, float metric)
@@ -36,21 +34,23 @@ void Node::SetPredecessor(Node* n, float metric)
 
 Node** Node::GetPath()
 {
-	Node** result = (Node**)malloc(hopcount*sizeof(Node*));
-	if(!memory->Add(result, MALLOC, false, "Cannot get path for node."))
+	if(hopcount==0) //root
 		return NULL;
+	Node** result = (Node**)malloc(hopcount*sizeof(Node*));
+	memory->Add(result, MALLOC, true, "Cannot get path for node.");
 	Node* p = this;
-	debug(8, "Getting path for %s:", p->sid.c_str());
+	debug(8, "Getting path for %s:", p->sid);
 	for(int i=hopcount-1; i>=0; i--)
 	{
-		debug(8, "  hop #%d: %s", hopcount-i-1, p->sid.c_str());
+		debug(8, "  hop #%d: %s", hopcount-i-1, p->sid);
 		result[i]=p;
 		p=p->predecessor;
 	}
 	if(p->predecessor!=NULL)
 		debug(1, "  Some problem with getpath()...");
-	
-	debug(8, "Path for %s gathered.", sid.c_str());
+
+	p=NULL;	
+	debug(8, "Path for %s gathered.", sid);
 	return result;
 }
 
@@ -76,8 +76,7 @@ Connections::~Connections()
 
 void Connections::Add(Node* n, float m)
 {
-	//debug(9, "Adding new connection: %s (%d) with metric of %.3f", n->sid.c_str(), n->id, m);
-	debug(9, "Adding new connection: %s with metric of %.3f", n->sid.c_str(), m);
+	debug(9, "Adding new connection: %s with metric of %.3f", n->sid, m);
 	if(count>=max-1)
 		More();
 	nodes[count]=n;
@@ -126,7 +125,7 @@ Nodes::~Nodes()
 
 void Nodes::Add(Node *n)
 {
-	debug(8, "Adding new node into list: %s", n->sid.c_str());
+	debug(8, "Adding new node into list: %s", n->sid);
 	if(count>=max-1)
 		More();
 	nodes[count]=n;
@@ -188,7 +187,7 @@ void Nodes::SPF(Node* root, const char* filename)
 	float bestmetric;
 	bool found;
 	
-	debug(1, "SPF Algorithm for root '%s' started.", root->sid.c_str());
+	debug(1, "SPF Algorithm for root '%s' started.", root->sid);
 	
 	//mark root usable //and others unusable
 	usablem[usablecount]=0;
@@ -211,7 +210,7 @@ void Nodes::SPF(Node* root, const char* filename)
 			}
 		}
 		
-		debug(6, "Found best: %s (metric %.3f).", usable[bestid]->sid.c_str(), bestmetric);
+		debug(6, "Found best: %s (metric %.3f).", usable[bestid]->sid, bestmetric);
 		
 		//add it into used, its neighbors into usable
 		used[usedcount]=usable[bestid];
@@ -223,7 +222,7 @@ void Nodes::SPF(Node* root, const char* filename)
 		debug(8, "Usables before update:");
 		for(int i=0; i<usablecount; i++)
 		{
-			debug(8, "  %s (metric %.3f)", usable[i]->sid.c_str(), usablem[i]);
+			debug(8, "  %s (metric %.3f)", usable[i]->sid, usablem[i]);
 		}
 		//add neighbors into usable / update metric
 		for(int i=0; i<used[usedcount]->neighbors->count; i++)
@@ -268,7 +267,7 @@ void Nodes::SPF(Node* root, const char* filename)
 		debug(8, "Usables after update:");
 		for(int i=0; i<usablecount; i++)
 		{
-			debug(8, "  %s (metric %.3f)", usable[i]->sid.c_str(), usablem[i]);
+			debug(8, "  %s (metric %.3f)", usable[i]->sid, usablem[i]);
 		}
 		usedcount++;
 	}
@@ -285,19 +284,19 @@ void Nodes::SPF(Node* root, const char* filename)
 	}
 	for(int i=0; i<usedcount; i++)
 	{
-		debug(7, "Writing info about %s", used[i]->sid.c_str());
+		debug(7, "Writing info about %s", used[i]->sid);
 		Node** path = used[i]->GetPath();
 		
-		fprintf(f, "(%s)->(%s) = %.3f: (%s)", root->sid.c_str(), used[i]->sid.c_str(), used[i]->totalmetric, root->sid.c_str());
-		debug(7, "  Writing path for %s (hopcount=%d, metric=%.3f)", used[i]->sid.c_str(), used[i]->hopcount, used[i]->totalmetric);
+		fprintf(f, "(%s)->(%s) = %.3f: (%s)", root->sid, used[i]->sid, used[i]->totalmetric, root->sid);
+		debug(7, "  Writing path for %s (hopcount=%d, metric=%.3f)", used[i]->sid, used[i]->hopcount, used[i]->totalmetric);
 		for(int j=0; j<used[i]->hopcount; j++)
 			if(path[j]!=NULL)
-				fprintf(f, "->(%s)", path[j]->sid.c_str());
+				fprintf(f, "->(%s)", path[j]->sid);
 		fprintf(f, "\n");
-		debug(7, "Info about %s written.", used[i]->sid.c_str());
+		debug(7, "Info about %s written.", used[i]->sid);
 	}
 	if(usedcount<count)
-		fprintf(f, "It seems that some nodes are not connected to '%s'. They are not shown in this file...\n", root->sid.c_str());
+		fprintf(f, "It seems that some nodes are not connected to '%s'. They are not shown in this file...\n", root->sid);
 	fclose(f);
 	
 	debug(1, "SPF is complete. Check '%s' for results.", filename);
@@ -309,7 +308,7 @@ void Nodes::SPF(Node* root, const char* filename)
 
 HashMap::HashMap()
 {
-	max=1;
+	max=100;
 	maxes = (int*)malloc(max*sizeof(int));
 	memory->Add(maxes, MALLOC, true, "Cannot create 'maxes' list for HashMap.");
 	counts = (int*)malloc(max*sizeof(int));
@@ -318,7 +317,7 @@ HashMap::HashMap()
 	memory->Add(buckets, MALLOC, true, "Cannot create 'buckets' list for HashMap.");
 	for(int i=0; i<max; i++)
 	{
-		maxes[i]=2;
+		maxes[i]=32;
 		counts[i]=0;
 		buckets[i]=(Node**)malloc(maxes[i]*sizeof(Node*));
 		memory->Add(buckets[i], MALLOC, true, "Cannot create bucket for HashMap.");
@@ -383,10 +382,7 @@ void HashMap::More(int bucket)
 		
 int HashMap::GetHash(Node* n)
 {
-	int result=0;
-	for(string::size_type i=0; i<n->sid.size(); ++i)
-		result+=n->sid[i];
-	return result%max;
+	return GetHash(n->sid);
 }
 
 int HashMap::GetHash(const char* name)
@@ -399,19 +395,22 @@ int HashMap::GetHash(const char* name)
 			break;
 		result+=name[counter++];
 	}
+	debug(7, "Hash for '%s'=%d", name, result%max);
 	return result%max;
 }
 
 Node* HashMap::Find(const char* name)
 {
 	int hash = GetHash(name);
+	debug(7, "Getting hash for %s\n", name);
 	debug(9, "hash: %d", hash);
 	for(int i=0; i<counts[hash]; i++)
 	{
-		debug(9, "hash=%d, i=%d, b[h][i]=%s, maxes[h]=%d", hash, i, buckets[hash][i]->sid.c_str(), maxes[hash]);
-		if(strcmp(buckets[hash][i]->sid.c_str(), name)==0)
+		debug(9, "hash=%d, i=%d, b[h][i]=%s, maxes[h]=%d", hash, i, buckets[hash][i]->sid, maxes[hash]);
+		if(strcmp(buckets[hash][i]->sid, name)==0)
 			return buckets[hash][i];
 	}
+	debug(3, "Node '%s' could not be found.", name);
 	return NULL;
 }
 

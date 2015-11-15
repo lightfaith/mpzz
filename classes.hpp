@@ -17,13 +17,13 @@ class Node : Generic
 {
 	public:
 		//int id;
-		string sid;
+		char* sid;
 		Connections* neighbors;
 		Node* predecessor;
 		int hopcount;
 		float totalmetric;
 		
-		Node(string sid);
+		Node(char* sid);
 		~Node();
 		void Print();
 		void SetPredecessor(Node* n, float metric);

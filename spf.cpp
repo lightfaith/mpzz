@@ -2,8 +2,8 @@
 #include "lib.hpp"
 #include "parser.hpp"
 
-int debuglevel=0;
-Memory* memory = new Memory();
+int debuglevel=0; //verbosity
+Memory* memory = new Memory(); //memory management structure
 
 void printusage(const char* program)
 {
@@ -13,24 +13,26 @@ void printusage(const char* program)
 
 int main(int argc, char** argv)
 {
-	if(argc<4)
+	if(argc<4) //not enough arguments
 		printusage(argv[0]);
-	if(argc>4)
+	if(argc>4) //debug level provided, parse
 	debuglevel=atoi(argv[4]);
-	if(debuglevel<0 || debuglevel>9)
+	if(debuglevel<0 || debuglevel>9) //debug level weird
 		printusage(argv[0]);
 
-	Nodes* nodes = gmlparse(argv[1]);
-	if(nodes==NULL)
+	Nodes* nodes = gmlparse(argv[1]); //parse nodes as gml
+	if(nodes==NULL) 
 	{
+		//something got wrong
 		printf("E: Parsing failed. Exiting...\n");
 		memory->FreeAll();
 		exit(1);
 	}
-	debug(2, "Size: %d\n", nodes->count);
+
 	if(nodes->count<100)
 		nodes->Print();
 
+	//find root by name
 	Node* root = nodes->Find(argv[3]);
 	if(root==NULL)
 	{
@@ -38,7 +40,11 @@ int main(int argc, char** argv)
 		memory->FreeAll();
 		return 1;
 	}
+
+	//compute Dijkstra
 	nodes->SPF(root, argv[2]);
+
+	//delete memory structure (will free everything)
 	delete memory;
 	return 0;
 }

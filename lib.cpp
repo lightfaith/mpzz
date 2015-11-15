@@ -1,6 +1,5 @@
 #include "lib.hpp"
 
-
 void debug(int level, const char* format, ...)
 {
 	if(level<=debuglevel)
@@ -107,7 +106,7 @@ void Memory::More()
 bool Memory::Add(void* m, MEMTYPE type, bool exitonfail, const char* msgonfail)
 {
 	debug(9, "Adding memory pointer into memory structure (%p).", m);
-	if(m==NULL)
+	if(type==MALLOC && m==NULL)
 	{
 		printf("E: %s\n", msgonfail);
 		if(exitonfail)
@@ -136,8 +135,10 @@ void Memory::FreeAll()
 				free(mems[i]);
 			else if(types[i]==NEW)
 				delete (Generic*)mems[i];
-			else
-				delete[] (Generic*)mems[i];
+			else if(types[i]==NEWARR)
+				delete [] (Generic*)mems[i];
+			else 
+				debug(4, "Attempt to free memory with unknown type.");
 			mems[i]=NULL;
 			types[i]=NONE;
 		}
@@ -154,8 +155,10 @@ void Memory::Free(void* m)
 				free(m);
 			else if(types[i]==NEW)
 				delete (Generic*)mems[i];
+			else if(types[i]==NEWARR)
+				delete [] (Generic*)mems[i];
 			else
-				delete[] (Generic*)mems[i];
+				debug(4, "Attempt to free memory with unknown type.");
 			count--;
 			mems[i]=mems[count];
 			mems[count]=NULL;

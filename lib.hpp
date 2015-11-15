@@ -12,6 +12,8 @@ class Memory;
 class Generic{};
 
 
+//ENUM for different types of memories (they are freed/deleted accordingly). 
+//Objects are cast to Generic (Everything mine, no existing structures)
 typedef enum
 {
 	NONE, MALLOC, NEW, NEWARR

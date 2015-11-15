@@ -1,33 +1,34 @@
 #include "classes.hpp"
 #include "lib.hpp"
-//#define STACKSIZE 256
 #define BUFFSIZE 256
 
 Nodes* gmlparse(const char* file)
 {
 	debug(1, "FILE %s will be parsed as GML...", file);
-	long inputsize=getfilesize(file);
-	char* input = (char*)malloc(sizeof(char)*inputsize);
+	long inputsize=getfilesize(file); //size of input file
+	char* input = (char*)malloc(sizeof(char)*inputsize); //whole input string
 	memory->Add(input, MALLOC, true, "Cannot allocate input buffer.");
-	long inputcount=0;
-	Nodes* result = new Nodes();
+	long inputcount=0; //char counter
+	Nodes* result = new Nodes(); //result Nodes structure
 	memory->Add(result, NEW, true, "Cannot allocate node list.");
-	char* buffer = (char*)malloc(BUFFSIZE*sizeof(char));
+	char* buffer = (char*)malloc(BUFFSIZE*sizeof(char)); //temporary buffer
 	memory->Add(buffer, MALLOC, true, "Cannot allocate temporary buffer.");
 	
-	int wordlen=0;
-	int c;
-	int state=0;
-	int edgecount=0;
+	int wordlen=0; //length of keywords
+	int c; //single character
+	int state=0; //parsing state
+	long edgecount=0; //number of edges
 	
-	char* tmpid = (char*)malloc(BUFFSIZE*sizeof(char));
+	int tmpidlen=0; //length of temporary sid
+	char* tmpid = (char*)malloc(BUFFSIZE*sizeof(char)); //temporary sid
 	memory->Add(tmpid, MALLOC, true, "Cannot allocate temp id buffer.");
-	char* tmpsourceid = (char*)malloc(BUFFSIZE*sizeof(char));
+	char* tmpsourceid = (char*)malloc(BUFFSIZE*sizeof(char)); //temporary id of source
 	memory->Add(tmpsourceid, MALLOC, true, "Cannot allocate temp srcid buffer.");
-	char* tmptargetid = (char*)malloc(BUFFSIZE*sizeof(char));
+	char* tmptargetid = (char*)malloc(BUFFSIZE*sizeof(char)); //temporary id of target
 	memory->Add(tmptargetid, MALLOC, true, "Cannot allocate temp dstid buffer.");
-	float tmpmetric;
+	float tmpmetric; //temporary metric
 
+	//null those buffers
 	for(int i=0; i<BUFFSIZE; i++)
 	{
 		buffer[i]=0;
@@ -36,6 +37,9 @@ Nodes* gmlparse(const char* file)
 		tmptargetid[i]=0;
 	}
 
+	debug(1, "Parsing started.");
+	
+	//read file
 	FILE *f =  fopen(file, "r");
 	if(f==NULL)
 	{
@@ -43,19 +47,16 @@ Nodes* gmlparse(const char* file)
 		memory->FreeAll();
 		exit(1);
 	}
-	fread(input, 1, inputsize, f);
-	fclose(f);
-	
-	debug(1, "Parsing started.");
-	
+	//fread(input, 1, inputsize, f);
+	//fclose(f);	
 	while(state<11)
 	{
-		c=input[inputcount++];//fgetc(f);
-		if(c==0) //end of input? stop this madness
+		c=fgetc(f);//input[inputcount++];
+		if(c==EOF)//if(c==0) //end of input? stop this madness
 			break;
 		else if(c==' ' || c=='\t' || c=='\n' || c=='\r' || c=='\v') //whitespace, part complete
 		{
-			if(wordlen==0)
+			if(wordlen==0) //weird, skip
 				continue;
 			buffer[wordlen]=0;
 			
@@ -65,7 +66,6 @@ Nodes* gmlparse(const char* file)
 				{
 					if(strncmp(buffer, "graph", 5)==0)
 					{
-						//filestack[stcount++]='g';
 						state=1;
 						debug(6, "Correct keyword '%s'. Transiting to %d", buffer, state);
 					}
@@ -79,7 +79,6 @@ Nodes* gmlparse(const char* file)
 				{
 					if(strncmp(buffer, "[",1)==0)
 					{
-						//filestack[stcount++]='b';
 						state=2;
 						debug(6, " Correct keyword '%s'. Transiting to %d", buffer, state);
 					}
@@ -93,19 +92,16 @@ Nodes* gmlparse(const char* file)
 				{
 					if(strncmp(buffer, "node", 4)==0)
 					{
-						//filestack[stcount++]='n';
 						state=3;
 						debug(6, "  Correct keyword '%s'. Transiting to %d", buffer, state);
 					}
 					else if(strncmp(buffer, "edge", 4)==0)
 					{
-						//filestack[stcount++]='e';
 						state=6;
 						debug(6, "  Correct keyword '%s'. Transiting to %d", buffer, state);
 					}
 					else if(strncmp(buffer, "]", 1)==0)
 					{
-						//filestack[--stcount]=0;
 						state=11; //this is the end
 						debug(6, " Correct keyword '%s'. Transiting to %d", buffer, state);
 					}
@@ -119,7 +115,6 @@ Nodes* gmlparse(const char* file)
 				{
 					if(strncmp(buffer, "[", 1)==0)
 					{
-						//filestack[stcount++]='b';
 						state=4;
 						debug(6, "   Correct keyword '%s'. Transiting to %d", buffer, state);
 					}
@@ -133,20 +128,22 @@ Nodes* gmlparse(const char* file)
 				{
 					if(strncmp(buffer, "id",2)==0)
 					{
-						//filestack[stcount++]='i';
 						state=5;
 						debug(6, "    Correct keyword '%s'. Transiting to %d", buffer, state);
 					}
 					else if(strncmp(buffer, "]", 1)==0)
 					{
-						//filestack[--stcount]=0;
-						if(tmpid[0]!=0 /*&& tmpnode==NULL && tmpconn==NULL*/)
+						if(tmpid[0]!=0)
 						{
-							Node* tmpnode = new Node(tmpid);
+							//create new node
+							char* sid=(char*)malloc((tmpidlen)*sizeof(char));
+							memcpy(sid, tmpid, tmpidlen);
+							sid[tmpidlen]=0;
+							memory->Add(sid, MALLOC, true, "Cannot allocate node sid.");
+							Node* tmpnode = new Node(sid);
 							memory->Add(tmpnode, NEW, true, "Cannot alloc tmpnode.");
 							Connections* tmpconn = new Connections();
 							memory->Add(tmpconn, NEW, true, "Cannot alloc tmpconn.");
-							debug(9, "HIER!");
 							tmpnode->neighbors=tmpconn;
 							result->Add(tmpnode);
 						}
@@ -163,10 +160,10 @@ Nodes* gmlparse(const char* file)
 				}
 				case 5: //in node[id, load identifier (string)
 				{
-					//filestack[stcount++]='i';
 					state=4;
 					strncpy(tmpid, buffer, BUFFSIZE);
 					tmpid[BUFFSIZE-1]=0;
+					tmpidlen=wordlen;
 					debug(6, "    Loaded id of new node: %s. Transiting to %d", tmpid, state);
 					break;
 				}
@@ -174,7 +171,6 @@ Nodes* gmlparse(const char* file)
 				{
 					if(strncmp(buffer, "[",1)==0)
 					{
-						//filestack[stcount++]='b';
 						state=7;
 						debug(6, "   Correct keyword '%s'. Transiting to %d", buffer, state);
 					}
@@ -188,31 +184,28 @@ Nodes* gmlparse(const char* file)
 				{
 					if(strncmp(buffer, "source", 6)==0)
 					{
-						//filestack[stcount++]='s';
 						state=8;
 						debug(6, "    Correct keyword '%s'. Transiting to %d", buffer, state);
 					}
 					else if(strncmp(buffer, "target", 6)==0)
 					{
-						//filestack[stcount++]='t';
 						state=9;
 						debug(6, "    Correct keyword '%s'. Transiting to %d", buffer, state);
 					}
 					else if(strncmp(buffer, "value", 5)==0)
 					{
-						//filestack[stcount++]='v';
 						state=10;
 						debug(6, "    Correct keyword '%s'. Transiting to %d", buffer, state);
 					}
 					else if(strncmp(buffer, "]", 1)==0)
 					{
-						//filestack[--stcount]=0;
+						//add new edge
 						state=2;
 						Node* tmpsource = result->Find(tmpsourceid);
 						Node* tmptarget = result->Find(tmptargetid);
 						if(tmpsource==NULL || tmptarget==NULL || tmpmetric<=0)
 						{
-							debug(6, "    Edge found is weird. Skipping...");
+							debug(6, "    Edge found is weird. Metric=%d. Skipping...", tmpmetric);
 						}
 						else
 						{
@@ -221,11 +214,11 @@ Nodes* gmlparse(const char* file)
 						}
 						if(tmpsource==NULL)
 						{
-							debug(9, "     tmpsource NULL");
+							debug(9, "     tmpsource NULL (looked for '%s')", tmpsourceid);
 						}
 						if(tmptarget==NULL)
 						{
-							debug(9, "     tmptarget NULL");
+							debug(9, "     tmptarget NULL (looked for '%s')", tmptargetid);
 						}
 						
 						debug(6, "   Correct keyword '%s'. Transiting to %d", buffer, state);
@@ -238,7 +231,6 @@ Nodes* gmlparse(const char* file)
 				}
 				case 8: //in edge[source, load id (string)
 				{
-					//filestack[--stcount]=0;
 					state=7;
 					strncpy(tmpsourceid, buffer, BUFFSIZE);
 					tmpsourceid[BUFFSIZE-1]=0;
@@ -247,7 +239,6 @@ Nodes* gmlparse(const char* file)
 				}
 				case 9: //in edge[target, load id (string)
 				{
-					//filestack[--stcount]=0;
 					state=7;
 					strncpy(tmptargetid, buffer, BUFFSIZE);
 					tmptargetid[BUFFSIZE-1]=0;
@@ -256,7 +247,6 @@ Nodes* gmlparse(const char* file)
 				}
 				case 10: //in edge[value, load metric (float)
 				{
-					//filestack[--stcount]=0;
 					state=7;
 					tmpmetric=atof(buffer);
 					debug(6, "     Loaded metric of new edge: %.3f. Transiting to %d", tmpmetric, state);
@@ -267,10 +257,21 @@ Nodes* gmlparse(const char* file)
 		}
 		else //normal character, treat as keyword or value part
 		{
-			buffer[wordlen++]=c;	
+			buffer[wordlen]=c;
+			//we don't want any buffer overflow
+			if(wordlen<BUFFSIZE-2)
+				wordlen++;
+			else
+			{
+				buffer[BUFFSIZE-1]=0;
+				debug(3, "Keyword '%s' too long. Will be malformed.", buffer);
+			}
 		}
 		
-	}
+	} //end of while
+
+	//close file, free unnecessary buffers
+	fclose(f);
 	debug(1, "Data successfully loaded (%d nodes, %d edges).", result->count, edgecount);
 	memory->Free(buffer);
 	//free(filestack);
