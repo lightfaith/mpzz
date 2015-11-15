@@ -28,7 +28,7 @@ void gml(int nodes, const char* filename)
 			continue;
 		for(int j=i+1; j<nodes; j++)
 		{
-			fprintf(f, "  edge\n  [\n    source %d\n    target %d\n    value %d\n  ]\n", i, j, rand()%500+1);
+			fprintf(f, "  edge\n  [\n    source %d\n    target %d\n    value %d\n  ]\n", i, j, rand()%(nodes*100)+1);
 		}
 	}
 	fprintf(f, "]\n"); //end of graph
