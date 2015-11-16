@@ -75,7 +75,7 @@ class HashMap : Generic
 		int* counts;
 		Node*** buckets;
 		
-		HashMap();
+		HashMap(int max);
 		~HashMap();
 		void Add(Node* n);
 		void More(int bucket);

@@ -31,7 +31,10 @@
 old/*
 
 # Large files
-data/9000.gml
+data/*000.gml
 
 # Benchmark folder
 benchmark/*
+
+# Report folder
+report/*

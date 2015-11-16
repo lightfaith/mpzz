@@ -111,7 +111,7 @@ Nodes::Nodes()
 	count=0;
 	nodes = (Node**)malloc(max*sizeof(Node*));
 	memory->Add(nodes, MALLOC, true, "Cannot create node list.");
-	hashmap = new HashMap();
+	hashmap = new HashMap(100);
 	memory->Add(hashmap, NEW, true, "Cannot create HashMap.");
 }
 
@@ -306,18 +306,19 @@ void Nodes::SPF(Node* root, const char* filename)
 
 
 
-HashMap::HashMap()
+HashMap::HashMap(int max)
 {
-	max=100;
+	this->max=max;
 	maxes = (int*)malloc(max*sizeof(int));
 	memory->Add(maxes, MALLOC, true, "Cannot create 'maxes' list for HashMap.");
 	counts = (int*)malloc(max*sizeof(int));
 	memory->Add(counts, MALLOC, true, "Cannot create 'counts' list for HashMap.");
 	buckets = (Node***)malloc(max*sizeof(Node**));
 	memory->Add(buckets, MALLOC, true, "Cannot create 'buckets' list for HashMap.");
+	int maxesvalue=max/8;
 	for(int i=0; i<max; i++)
 	{
-		maxes[i]=32;
+		maxes[i]=maxesvalue;
 		counts[i]=0;
 		buckets[i]=(Node**)malloc(maxes[i]*sizeof(Node*));
 		memory->Add(buckets[i], MALLOC, true, "Cannot create bucket for HashMap.");

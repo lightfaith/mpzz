@@ -127,7 +127,9 @@ bool Memory::Add(void* m, MEMTYPE type, bool exitonfail, const char* msgonfail)
 void Memory::FreeAll()
 {
 	debug(9, "~~~Cleaning memory:");
-	for(int i=0; i<count; i++)
+	if(types==NULL) //otherwise clang is not happy
+		return;
+	for(int i=count-1; i>=0; i--)
 		if(mems[i]!=NULL)
 		{
 			debug(9, "~~~  Freeing memory %p.", mems[i]);
@@ -141,6 +143,7 @@ void Memory::FreeAll()
 				debug(4, "Attempt to free memory with unknown type.");
 			mems[i]=NULL;
 			types[i]=NONE;
+			//count--;
 		}
 }
 
@@ -150,7 +153,7 @@ void Memory::Free(void* m)
 	{
 		if(mems[i]==m)
 		{
-			debug(9, "~~~  Freeing memory %p.", m);
+			debug(9, "~~~  Freeing specific memory %p.", m);
 			if(types[i]==MALLOC)
 				free(m);
 			else if(types[i]==NEW)

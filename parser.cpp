@@ -136,8 +136,9 @@ Nodes* gmlparse(const char* file)
 						if(tmpid[0]!=0)
 						{
 							//create new node
-							char* sid=(char*)malloc((tmpidlen)*sizeof(char));
-							memcpy(sid, tmpid, tmpidlen);
+							char* sid=(char*)malloc((tmpidlen+1)*sizeof(char));
+							//memcpy(sid, tmpid, tmpidlen);
+							strncpy(sid, tmpid, tmpidlen);
 							sid[tmpidlen]=0;
 							memory->Add(sid, MALLOC, true, "Cannot allocate node sid.");
 							Node* tmpnode = new Node(sid);
@@ -161,8 +162,8 @@ Nodes* gmlparse(const char* file)
 				case 5: //in node[id, load identifier (string)
 				{
 					state=4;
-					strncpy(tmpid, buffer, BUFFSIZE);
-					tmpid[BUFFSIZE-1]=0;
+					strncpy(tmpid, buffer, wordlen+1);
+					tmpid[wordlen]=0;
 					tmpidlen=wordlen;
 					debug(6, "    Loaded id of new node: %s. Transiting to %d", tmpid, state);
 					break;
