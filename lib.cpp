@@ -2,6 +2,7 @@
 
 void debug(int level, const char* format, ...)
 {
+	//print info if wanted
 	if(level<=debuglevel)
 	{
 		va_list args;
@@ -15,10 +16,12 @@ void debug(int level, const char* format, ...)
 
 long getfilesize(const char* filename)
 {
+	//get size of file (not good for files 4GB+)
 	FILE *f = fopen(filename, "rt");
 	if(f==NULL)
 	{
 		printf("E: Unable to open file '%s'\n", filename);
+		delete memory;
 		return 0;
 	}
 	fseek(f, 0, SEEK_END);
@@ -41,6 +44,7 @@ MemoryBlock::MemoryBlock(void* p, MEMTYPE type)
 
 MemoryBlock::~MemoryBlock()
 {
+	//freeing memory based on alloc type
 	if(type==MALLOC)
 		free(p);
 	else if(type==NEW)
@@ -56,12 +60,14 @@ Memory::Memory(int max)
 {
 	debug(9, "Creating memory structure.");
 	this->max=max;
+	//create hashmap
 	mems = (MemoryBlock***)malloc(max*sizeof(MemoryBlock**));
 	if(mems==NULL)
 	{
 		printf("E: Cannot allocate memory structure, exiting!\n");
 		exit(1);
 	}
+	//create counts array
 	counts=(int*)malloc(max*sizeof(int));
 	if(counts==NULL)
 	{
@@ -69,6 +75,7 @@ Memory::Memory(int max)
 		free(mems);
 		exit(1);
 	}
+	//create maxes array
 	maxes = (int*)malloc(max*sizeof(int));
 	if(maxes==NULL)
 	{
@@ -77,6 +84,7 @@ Memory::Memory(int max)
 		free(counts);
 		exit(1);
 	}
+	//create buckets, initialize maxes and counts
 	int maxesvalue=max/8;
 	for(int i=0; i<max; i++)
 	{
@@ -105,6 +113,7 @@ void Memory::More(int bucket)
 {
 	debug(9, "Resizing memory bucket %d from %d to %d\n.", bucket, maxes[bucket], maxes[bucket]*2);
 	maxes[bucket]*=2;
+	//resize bucket
 	MemoryBlock** tmpmems=(MemoryBlock**)realloc(mems[bucket], maxes[bucket]*sizeof(MemoryBlock*));
 	if(tmpmems==NULL)
 	{
@@ -118,6 +127,7 @@ void Memory::More(int bucket)
 bool Memory::Add(void* m, MEMTYPE type, bool exitonfail, const char* msgonfail)
 {
 	debug(9, "Adding memory pointer into memory structure (%p).", m);
+	//allocation failed?
 	if(type==MALLOC && m==NULL)
 	{
 		printf("E: %s\n", msgonfail);
@@ -128,10 +138,14 @@ bool Memory::Add(void* m, MEMTYPE type, bool exitonfail, const char* msgonfail)
 		}
 		return false;
 	}
+	//determine bucket
 	int hash = GetHash(m);
+	//resize bucket if necessary
 	if(counts[hash]>maxes[hash]-1)
 		More(hash);
+	//create MemoryBlock
 	MemoryBlock* newblock = new MemoryBlock(m, type);
+	//add into bucket
 	mems[hash][counts[hash]]=newblock;
 	counts[hash]++;
 	return true;
@@ -144,6 +158,7 @@ void Memory::FreeAll()
 	{
 		for(int j=0; j<counts[i]; j++)
 		{
+			//delete Memory Block (will free/delete/delete[] its content)
 			delete mems[i][j];
 			mems[i][j]=NULL;
 		}
@@ -154,10 +169,13 @@ void Memory::FreeAll()
 void Memory::Free(void* m)
 {
 	int hash = GetHash(m);
+	//find MemoryBlock to free
 	for(int i=0; i<counts[hash]; i++)
 		if(mems[hash][i]->p==m)
 		{
+			//delete Memory Block (will free/delete/delete[] its content)
 			delete mems[hash][i];
+			//re-organize bucket
 			mems[hash][i]=mems[hash][counts[hash]-1];
 			counts[hash]--;
 			break;
@@ -166,7 +184,9 @@ void Memory::Free(void* m)
 
 void Memory::FreeThis()
 {
+	//first free every Memory Block
 	FreeAll();
+	//free buckets, hashmap, counts and maxes
 	for(int i=0; i<max; i++)
 		free(mems[i]);
 	free(mems);
@@ -177,7 +197,8 @@ void Memory::FreeThis()
 
 int Memory::GetHash(void* p)
 {
-	int hash = ((int)p)%max;
+	// abs((pointer value)%(number of buckets))
+	int hash = *((int*)(&p))%max;
 	if(hash<0)
 		hash=-hash;
 	debug(8, "Memory hash for %p: %d", p, hash);

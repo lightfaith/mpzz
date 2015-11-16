@@ -16,72 +16,71 @@ class NodeHashMap;
 class Node : Generic
 {
 	public:
-		//int id;
-		char* sid;
-		Connections* neighbors;
-		Node* predecessor;
-		int hopcount;
-		float totalmetric;
+		char* sid; //ID of node
+		Connections* neighbors; 
+		Node* predecessor; //pointer to predecessor (towards root)
+		int hopcount; //number of nodes to root 
+		float totalmetric; //distance from root
 		
 		Node(char* sid);
 		~Node();
 		void Print();
 		void SetPredecessor(Node* n, float metric);
-		Node** GetPath();
+		Node** GetPath(); // get all nodes from root to this Node
 };
 
 
 class Connections : Generic
 {
 	private:
-		int max;
+		int max; //max number of nodes
 	public:
-		int count;
-		Node** nodes;
-		float* metrics;
+		int count; //actual number of nodes
+		Node** nodes; //array of pointers to nodes
+		float* metrics; //array of distance to each node
 		
 		Connections();
 		~Connections();
 		void Add(Node* n, float m);
-		void More();
+		void More(); //resizing method
 };
 
 
 class Nodes : Generic
 {
 	private:
-		int max;
+		int max; //maximum number of all nodes
 	public:
-		int count;
-		Node** nodes;
-		NodeHashMap* hashmap;
+		int count; //actual number of all nodes
+		Node** nodes; //list of nodes
+		NodeHashMap* hashmap; //hashmap of nodes
+		
 		Nodes();
 		~Nodes();
-		
 		void Add(Node* n);
-		void More();
+		void More(); //resizing method
 		void Print();
-		Node* Find(const char* sid);
-		void SPF(Node* root, const char* filename);
+		Node* Find(const char* sid); //search by ID method
+		void Reindex(); //rebuild hashmap based on node count
+		void SPF(Node* root, const char* filename); //this is the black magic
 };
 
 class NodeHashMap : Generic
 {
 	private:
-		int max;
-		int* maxes;
+		int max; //max number of buckets
+		int* maxes; //max size of buckets
 	public:
-		//int count; //max automatically
-		int* counts;
-		Node*** buckets;
+		int* counts; //actual size of buckets
+		Node*** buckets; //hashmap of pointers to nodes
 		
 		NodeHashMap(int max);
 		~NodeHashMap();
 		void Add(Node* n);
-		void More(int bucket);
-		void Free();
-		int GetHash(Node* n);
-		int GetHash(const char* name);
-		Node* Find(const char* name);
+		void More(int bucket); //resizing function
+		void Free(); 
+		int GetHash(Node* n); //hash computation method
+		int GetHash(const char* name); //hash computation method
+		Node* Find(const char* name); //search by ID method
 };
 #endif

@@ -18,7 +18,8 @@ Nodes* gmlparse(const char* file)
 	int c; //single character
 	int state=0; //parsing state
 	long edgecount=0; //number of edges
-	
+	bool optimized=false;
+
 	int tmpidlen=0; //length of temporary sid
 	char* tmpid = (char*)malloc(BUFFSIZE*sizeof(char)); //temporary sid
 	memory->Add(tmpid, MALLOC, true, "Cannot allocate temp id buffer.");
@@ -44,16 +45,16 @@ Nodes* gmlparse(const char* file)
 	if(f==NULL)
 	{
 		printf("E: Cannot open input file '%s'.\n", file);
-		memory->FreeAll();
+		delete memory;
 		exit(1);
 	}
 	fread(input, 1, inputsize, f);
-	fclose(f);	
+	fclose(f);
+
 	while(state<11)
 	{
-		//c=fgetc(f);
 		c=input[inputcount++];
-		if(c==EOF)//if(c==0) //end of input? stop this madness
+		if(c==0) //end of input? stop this madness
 			break;
 		else if(c==' ' || c=='\t' || c=='\n' || c=='\r' || c=='\v') //whitespace, part complete
 		{
@@ -138,8 +139,7 @@ Nodes* gmlparse(const char* file)
 						{
 							//create new node
 							char* sid=(char*)malloc((tmpidlen+1)*sizeof(char));
-							//memcpy(sid, tmpid, tmpidlen);
-							strncpy(sid, tmpid, tmpidlen);
+							memcpy(sid, tmpid, tmpidlen);
 							sid[tmpidlen]=0;
 							memory->Add(sid, MALLOC, true, "Cannot allocate node sid.");
 							Node* tmpnode = new Node(sid);
@@ -171,6 +171,13 @@ Nodes* gmlparse(const char* file)
 				}
 				case 6: //in edge, wait for [
 				{
+					//hashmap not optimized? do it now!
+					if(!optimized)
+					{
+						result->Reindex();
+						optimized=true;
+					}
+					
 					if(strncmp(buffer, "[",1)==0)
 					{
 						state=7;
@@ -272,11 +279,8 @@ Nodes* gmlparse(const char* file)
 		
 	} //end of while
 
-	//close file, free unnecessary buffers
-	//fclose(f);
 	debug(1, "Data successfully loaded (%d nodes, %d edges).", result->count, edgecount);
 	memory->Free(buffer);
-	//free(filestack);
 	memory->Free(input);
 	memory->Free(tmpid);
 	memory->Free(tmpsourceid);

@@ -12,7 +12,7 @@ class Memory;
 class Generic{};
 
 
-//ENUM for different types of memories (they are freed/deleted accordingly). 
+//ENUM for different types of memories (they are freed/deleted accordingly).
 //Objects are cast to Generic (Everything mine, no existing structures)
 typedef enum
 {
@@ -26,11 +26,11 @@ void debug(int level, const char* format, ...);
 long getfilesize(const char* filename);
 //bool equalstrings(const char* s1, const char* s2);
 
-class MemoryBlock
+class MemoryBlock //holds one pointer
 {
 	public:
-		void* p;
-		MEMTYPE type;
+		void* p; //pointer to memory
+		MEMTYPE type; //type of allocation method
 		MemoryBlock(void* p, MEMTYPE type);
 		~MemoryBlock();
 };
@@ -38,21 +38,21 @@ class MemoryBlock
 class Memory
 {
 	private:
-		int max;
-		int* maxes;
+		int max; //number of buckets
+		int* maxes; //maximum number of blocks in each bucket
 		
 	public:
-		int* counts;
-		MemoryBlock*** mems;
+		int* counts; //actual number of blocks in each bucket
+		MemoryBlock*** mems; //hashmap of pointers to memory blocks
 
 		Memory(int max);
 		~Memory();
-		void More(int bucket);
-		bool Add(void* m, MEMTYPE type, bool exitonfail, const char* msgonfail);
-		void FreeAll();
-		void Free(void* m);
-		void FreeThis();
-		int GetHash(void* p);
+		void More(int bucket); //bucket resizing method
+		bool Add(void* m, MEMTYPE type, bool exitonfail, const char* msgonfail); //memory block addition
+		void FreeAll(); //all pointers deallocation
+		void Free(void* m); //single pointer deallocation
+		void FreeThis(); //all pointers deallocation (including this structure)
+		int GetHash(void* p); //hash computation
 };
 
 #endif

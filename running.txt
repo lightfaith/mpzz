@@ -1,2 +1,0 @@
-./spf data/test.gml output.txt A
-./spf data/lesmis.gml output.txt 1

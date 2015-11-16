@@ -1,4 +1,0 @@
-(3)->(3) = 0.000: (3)
-(3)->(1) = 246.000: (3)->(1)
-(3)->(2) = 583.000: (3)->(1)->(2)
-It seems that some nodes are not connected to '3'. They are not shown in this file...

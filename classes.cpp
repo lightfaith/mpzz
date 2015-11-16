@@ -2,8 +2,10 @@
 
 Node::Node(char* sid)
 {
+	//set ID
 	this->sid=sid;
 	debug(9, "Creating node %s", sid);
+	//set NULL predecessor and "infinite" distance
 	predecessor=NULL;
 	hopcount=INT_MAX;
 }
@@ -17,7 +19,9 @@ Node::~Node()
 
 void Node::Print()
 {
+	//print node id
 	debug(2, "  Node %s", sid);
+	//print neighbors
 	for(int i=0; i<neighbors->count; i++)
 		debug(2, "    Neighbor %s, distance %.3f", neighbors->nodes[i]->sid, neighbors->metrics[i]);
 }
@@ -36,14 +40,18 @@ Node** Node::GetPath()
 {
 	if(hopcount==0) //root
 		return NULL;
+	//prepare array of pointers
 	Node** result = (Node**)malloc(hopcount*sizeof(Node*));
 	memory->Add(result, MALLOC, true, "Cannot get path for node.");
+	//start with this node
 	Node* p = this;
 	debug(8, "Getting path for %s:", p->sid);
 	for(int i=hopcount-1; i>=0; i--)
 	{
 		debug(8, "  hop #%d: %s", hopcount-i-1, p->sid);
+		//add to list
 		result[i]=p;
+		//move to predecessor
 		p=p->predecessor;
 	}
 	if(p->predecessor!=NULL)
@@ -51,6 +59,7 @@ Node** Node::GetPath()
 
 	p=NULL;	
 	debug(8, "Path for %s gathered.", sid);
+	//return path
 	return result;
 }
 
@@ -58,6 +67,7 @@ Node** Node::GetPath()
 Connections::Connections()
 {
 	debug(9, "Creating connections...");
+	//set default max and count
 	max=16;
 	count=0;
 	nodes = (Node**)malloc(max*sizeof(Node*));
@@ -77,6 +87,7 @@ Connections::~Connections()
 void Connections::Add(Node* n, float m)
 {
 	debug(9, "Adding new connection: %s with metric of %.3f", n->sid, m);
+	//resize if necessary
 	if(count>=max-1)
 		More();
 	nodes[count]=n;
@@ -100,17 +111,18 @@ void Connections::More()
 	memory->Free(metrics);
 	nodes = newnodes;
 	metrics= newmetrics;
-	//nodes = (Node**)realloc(nodes, max);
-	//metrics = (float*)realloc(metrics, max);
 }
 
 Nodes::Nodes()
 {
 	debug(5, "Node list is being created...");
+	//set max and count
 	max=64;
 	count=0;
+	//allocate array of nodes
 	nodes = (Node**)malloc(max*sizeof(Node*));
 	memory->Add(nodes, MALLOC, true, "Cannot create node list.");
+	//create hashmap
 	hashmap = new NodeHashMap(100);
 	memory->Add(hashmap, NEW, true, "Cannot create HashMap.");
 }
@@ -126,6 +138,7 @@ Nodes::~Nodes()
 void Nodes::Add(Node *n)
 {
 	debug(8, "Adding new node into list: %s", n->sid);
+	//resize if necessary
 	if(count>=max-1)
 		More();
 	nodes[count]=n;
@@ -143,19 +156,7 @@ void Nodes::More()
 		newnodes[i]=nodes[i];
 	memory->Free(nodes);
 	nodes = newnodes;
-	
-	//nodes = (Node**)realloc(nodes, max);
 }
-
-/*void Nodes::Free(bool all=true)
-{
-	if(all)
-		for(int i=0; i<count; i++)
-		{
-			free(nodes[i]); nodes[i]=NULL;
-		}
-	free(nodes); nodes=NULL;
-}*/
 
 void Nodes::Print()
 {
@@ -167,37 +168,50 @@ void Nodes::Print()
 
 Node* Nodes::Find(const char* sid)
 {
+	//use hashmap for search
 	return hashmap->Find(sid);
 }
 
+void Nodes::Reindex()
+{
+	//resize hash map (count/2 => cca 15% of total time for Find())
+	NodeHashMap* newhashmap = new NodeHashMap(count/2);
+	for(int i=0; i<count; i++)
+		newhashmap->Add(nodes[i]);
+	memory->Free(hashmap);
+	hashmap=newhashmap;
+}
 
 void Nodes::SPF(Node* root, const char* filename)
 {
+	//list of used nodes
 	Node** used = (Node**)malloc(count*sizeof(Node*));
 	memory->Add(used, MALLOC, true, "Cannot prepare 'used' list for SPF.");
+	//list of usable (reachable) nodes
 	Node** usable = (Node**)malloc(count*sizeof(Node*));
 	memory->Add(usable, MALLOC, true, "Cannot prepare 'usable' list for SPF.");
-	//HashMap* usable = new HashMap(100);
-	//memory->Add(usable, NEW, true, "Cannot prepare 'usable' hash map for SPF.");
+	//metric for usable nodes
 	float* usablem = (float*)malloc(count*sizeof(float));
 	memory->Add(usablem, MALLOC, true, "Cannot prepare 'usablem' list for SPF.");
+	//number of used
 	int usedcount=0;
+	//number of usable
 	int usablecount=0;
-	//int unusablecount=0;
-	int bestid=0;
-	float bestmetric;
-	bool found;
+	int bestid=0; //best node from usables
+	float bestmetric; //metric of best node
+	bool found; //found flag
 	
 	debug(1, "SPF Algorithm for root '%s' started.", root->sid);
 	
-	//mark root usable //and others unusable
+	//mark root usable
 	usablem[usablecount]=0;
 	usable[usablecount]=root;
 	usable[usablecount]->SetPredecessor(NULL, 0);
 	usablecount++;
-	
 	debug(9, "Root marked usable.");
-	//move best into used, move neighbors into usable etc...
+
+	//move best into used, its neighbors into usable etc...
+	//until no usable exists (finished or separated nodes)
 	while(usablecount>0)
 	{
 		//find best
@@ -213,7 +227,7 @@ void Nodes::SPF(Node* root, const char* filename)
 		
 		debug(6, "Found best: %s (metric %.3f).", usable[bestid]->sid, bestmetric);
 		
-		//add it into used, its neighbors into usable
+		//add it into used
 		used[usedcount]=usable[bestid];
 		//remove from usable
 		usable[bestid]=usable[usablecount-1];
@@ -228,9 +242,12 @@ void Nodes::SPF(Node* root, const char* filename)
 		//add neighbors into usable / update metric
 		for(int i=0; i<used[usedcount]->neighbors->count; i++)
 		{
+			//neighbor
 			Node* nei = used[usedcount]->neighbors->nodes[i];
+			//its metric
 			float met = used[usedcount]->neighbors->metrics[i];
 			found=false;
+
 			for(int j=0; j<usablecount; j++)
 			{
 				//found? update metric
@@ -255,7 +272,7 @@ void Nodes::SPF(Node* root, const char* filename)
 					}
 			}
 			
-			//still not found? add new :)
+			//still not found? add into usables :)
 			if(!found)
 			{
 				usablem[usablecount]=bestmetric+met;
@@ -280,22 +297,26 @@ void Nodes::SPF(Node* root, const char* filename)
 	if(f==NULL)
 	{
 		printf("E: Cannot open output file '%s'. Exiting...", filename);
-		memory->FreeAll();
+		delete memory;
 		exit(1);
 	}
 	for(int i=0; i<usedcount; i++)
 	{
 		debug(7, "Writing info about %s", used[i]->sid);
+		//get path
 		Node** path = used[i]->GetPath();
 		
+		//print metric and root
 		fprintf(f, "(%s)->(%s) = %.3f: (%s)", root->sid, used[i]->sid, used[i]->totalmetric, root->sid);
 		debug(7, "  Writing path for %s (hopcount=%d, metric=%.3f)", used[i]->sid, used[i]->hopcount, used[i]->totalmetric);
+		//print following nodes
 		for(int j=0; j<used[i]->hopcount; j++)
 			if(path[j]!=NULL)
 				fprintf(f, "->(%s)", path[j]->sid);
 		fprintf(f, "\n");
 		debug(7, "Info about %s written.", used[i]->sid);
 	}
+	//not every node in used?
 	if(usedcount<count)
 		fprintf(f, "It seems that some nodes are not connected to '%s'. They are not shown in this file...\n", root->sid);
 	fclose(f);
@@ -310,13 +331,17 @@ void Nodes::SPF(Node* root, const char* filename)
 NodeHashMap::NodeHashMap(int max)
 {
 	this->max=max;
+	//create array of max bucket sizes
 	maxes = (int*)malloc(max*sizeof(int));
 	memory->Add(maxes, MALLOC, true, "Cannot create 'maxes' list for HashMap.");
+	//create array of actual bucket sizes
 	counts = (int*)malloc(max*sizeof(int));
 	memory->Add(counts, MALLOC, true, "Cannot create 'counts' list for HashMap.");
+	//create hashmap
 	buckets = (Node***)malloc(max*sizeof(Node**));
 	memory->Add(buckets, MALLOC, true, "Cannot create 'buckets' list for HashMap.");
 	int maxesvalue=max/8;
+	//create buckets, init maxes and counts
 	for(int i=0; i<max; i++)
 	{
 		maxes[i]=maxesvalue;
@@ -329,12 +354,15 @@ NodeHashMap::NodeHashMap(int max)
 
 NodeHashMap::~NodeHashMap()
 {
+	//free maxes and counts
 	memory->Free(maxes); maxes=NULL;
 	memory->Free(counts); counts=NULL;
+	//free buckets
 	for(int i=0; i<max; i++)
 	{
 		memory->Free(buckets[i]); buckets[i]=NULL;
 	}
+	//free hashmap
 	memory->Free(buckets);
 	
 }
@@ -344,6 +372,7 @@ void NodeHashMap::Add(Node* n)
 {
 	debug(8, "Adding new node into hashmap.");
 	int hash = GetHash(n);
+	//resize if needed
 	if(counts[hash]>=maxes[hash]-1)
 		More(hash);
 	buckets[hash][counts[hash]]=n;
@@ -361,27 +390,8 @@ void NodeHashMap::More(int bucket)
 		newbucket[i]=buckets[bucket][i];
 	memory->Free(buckets[bucket]);
 	buckets[bucket]=newbucket;
-	
-	//Node** more=(Node**)realloc(buckets[bucket], maxes[bucket]);
-	//debug(9, "more: %p", more);
-	//buckets[bucket]=more;
-	//debug(5, "Bucket %d resized to %d.", bucket, maxes[bucket]);
 }
 
-
-/*void HashMap::Free()
-{
-	free(maxes); maxes=NULL;
-	free(counts); counts=NULL;
-	for(int i=0; i<max; i++)
-	{
-		free(buckets[i]); buckets[i]=NULL;
-	}
-	free(buckets);
-}*/
-		
-		
-		
 int NodeHashMap::GetHash(Node* n)
 {
 	return GetHash(n->sid);
@@ -391,6 +401,7 @@ int NodeHashMap::GetHash(const char* name)
 {
 	int counter=0;
 	int result=0;
+	//sum of ASCIIs of all characters % number of buckets
 	while(1)
 	{
 		if(name[counter]==0)
@@ -406,6 +417,7 @@ Node* NodeHashMap::Find(const char* name)
 	int hash = GetHash(name);
 	debug(7, "Getting hash for %s\n", name);
 	debug(9, "hash: %d", hash);
+	//for every node in bucket
 	for(int i=0; i<counts[hash]; i++)
 	{
 		debug(9, "hash=%d, i=%d, b[h][i]=%s, maxes[h]=%d", hash, i, buckets[hash][i]->sid, maxes[hash]);
@@ -415,7 +427,4 @@ Node* NodeHashMap::Find(const char* name)
 	debug(3, "Node '%s' could not be found.", name);
 	return NULL;
 }
-
-
-
 

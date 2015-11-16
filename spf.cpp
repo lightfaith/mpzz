@@ -25,7 +25,7 @@ int main(int argc, char** argv)
 	{
 		//something got wrong
 		printf("E: Parsing failed. Exiting...\n");
-		memory->FreeAll();
+		delete memory;
 		exit(1);
 	}
 
@@ -37,7 +37,7 @@ int main(int argc, char** argv)
 	if(root==NULL)
 	{
 		printf("E: You must choose valid node id!\n");
-		memory->FreeAll();
+		delete memory;
 		return 1;
 	}
 
