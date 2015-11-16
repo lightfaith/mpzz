@@ -31,7 +31,7 @@
 old/*
 
 # Large files
-gen/9000.gml
+data/9000.gml
 
 # Benchmark folder
 benchmark/*

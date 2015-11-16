@@ -23,11 +23,14 @@ void gml(int nodes, const char* filename)
 	//generate edges
 	for(int i=0; i<nodes; i++)
 	{
-		//skip sometimes to gain longer paths
-		if((rand()%100)<MISSRATIO)
-			continue;
-		for(int j=i+1; j<nodes; j++)
+		for(int j=0; j<nodes; j++)
 		{
+			if(i==j)
+				continue;
+
+			//skip sometimes to gain longer paths
+			if((rand()%100)<MISSRATIO)
+				continue;
 			fprintf(f, "  edge\n  [\n    source %d\n    target %d\n    value %d\n  ]\n", i, j, rand()%(nodes*100)+1);
 		}
 	}

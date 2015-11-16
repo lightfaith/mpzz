@@ -1,9 +1,10 @@
 CC=scan-build g++
 #CC=g++
 CFLAGS= -g -Wall 
-ROOT=spf
 
-$(ROOT): spf.cpp classes.o lib.o parser.o
+all: spf gen
+
+spf: spf.cpp classes.o lib.o parser.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 classes.o: classes.cpp lib.o
@@ -15,5 +16,8 @@ lib.o: lib.cpp
 parser.o: parser.cpp lib.o classes.o
 	$(CC) $(FLAGS) -c $^
 
+gen: gen.cpp
+	$(CC) $(CFLAGS) -o $@ $^
+
 clean: 
-	rm -f $(ROOT) *.o
+	rm -f spf gen *.o
