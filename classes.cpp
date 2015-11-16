@@ -111,7 +111,7 @@ Nodes::Nodes()
 	count=0;
 	nodes = (Node**)malloc(max*sizeof(Node*));
 	memory->Add(nodes, MALLOC, true, "Cannot create node list.");
-	hashmap = new HashMap(100);
+	hashmap = new NodeHashMap(100);
 	memory->Add(hashmap, NEW, true, "Cannot create HashMap.");
 }
 
@@ -177,7 +177,8 @@ void Nodes::SPF(Node* root, const char* filename)
 	memory->Add(used, MALLOC, true, "Cannot prepare 'used' list for SPF.");
 	Node** usable = (Node**)malloc(count*sizeof(Node*));
 	memory->Add(usable, MALLOC, true, "Cannot prepare 'usable' list for SPF.");
-	//Node** unusable = (Node**)malloc(count*sizeof(Node*));
+	//HashMap* usable = new HashMap(100);
+	//memory->Add(usable, NEW, true, "Cannot prepare 'usable' hash map for SPF.");
 	float* usablem = (float*)malloc(count*sizeof(float));
 	memory->Add(usablem, MALLOC, true, "Cannot prepare 'usablem' list for SPF.");
 	int usedcount=0;
@@ -306,7 +307,7 @@ void Nodes::SPF(Node* root, const char* filename)
 
 
 
-HashMap::HashMap(int max)
+NodeHashMap::NodeHashMap(int max)
 {
 	this->max=max;
 	maxes = (int*)malloc(max*sizeof(int));
@@ -320,13 +321,13 @@ HashMap::HashMap(int max)
 	{
 		maxes[i]=maxesvalue;
 		counts[i]=0;
-		buckets[i]=(Node**)malloc(maxes[i]*sizeof(Node*));
+		buckets[i]=(Node**)malloc(maxesvalue*sizeof(Node*));
 		memory->Add(buckets[i], MALLOC, true, "Cannot create bucket for HashMap.");
 	}
 }
 
 
-HashMap::~HashMap()
+NodeHashMap::~NodeHashMap()
 {
 	memory->Free(maxes); maxes=NULL;
 	memory->Free(counts); counts=NULL;
@@ -339,7 +340,7 @@ HashMap::~HashMap()
 }
 
 
-void HashMap::Add(Node* n)
+void NodeHashMap::Add(Node* n)
 {
 	debug(8, "Adding new node into hashmap.");
 	int hash = GetHash(n);
@@ -350,7 +351,7 @@ void HashMap::Add(Node* n)
 }
 
 
-void HashMap::More(int bucket)
+void NodeHashMap::More(int bucket)
 {
 	debug(5, "Resizing hashmap bucket %d from %d to %d", bucket, maxes[bucket], maxes[bucket]*2);
 	maxes[bucket]*=2;
@@ -381,12 +382,12 @@ void HashMap::More(int bucket)
 		
 		
 		
-int HashMap::GetHash(Node* n)
+int NodeHashMap::GetHash(Node* n)
 {
 	return GetHash(n->sid);
 }
 
-int HashMap::GetHash(const char* name)
+int NodeHashMap::GetHash(const char* name)
 {
 	int counter=0;
 	int result=0;
@@ -400,7 +401,7 @@ int HashMap::GetHash(const char* name)
 	return result%max;
 }
 
-Node* HashMap::Find(const char* name)
+Node* NodeHashMap::Find(const char* name)
 {
 	int hash = GetHash(name);
 	debug(7, "Getting hash for %s\n", name);

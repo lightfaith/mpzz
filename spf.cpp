@@ -3,7 +3,7 @@
 #include "parser.hpp"
 
 int debuglevel=0; //verbosity
-Memory* memory = new Memory(); //memory management structure
+Memory* memory = new Memory(100); //memory management structure
 
 void printusage(const char* program)
 {

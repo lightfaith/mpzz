@@ -26,20 +26,33 @@ void debug(int level, const char* format, ...);
 long getfilesize(const char* filename);
 //bool equalstrings(const char* s1, const char* s2);
 
+class MemoryBlock
+{
+	public:
+		void* p;
+		MEMTYPE type;
+		MemoryBlock(void* p, MEMTYPE type);
+		~MemoryBlock();
+};
+
 class Memory
 {
 	private:
 		int max;
-		MEMTYPE* types;
-	public:
-		int count;
-		void** mems;
+		int* maxes;
 		
-		Memory();
+	public:
+		int* counts;
+		MemoryBlock*** mems;
+
+		Memory(int max);
 		~Memory();
-		void More();
+		void More(int bucket);
 		bool Add(void* m, MEMTYPE type, bool exitonfail, const char* msgonfail);
 		void FreeAll();
 		void Free(void* m);
+		void FreeThis();
+		int GetHash(void* p);
 };
+
 #endif

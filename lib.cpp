@@ -31,76 +31,88 @@ long getfilesize(const char* filename)
 	return size;
 }
 
-/*
-bool equalstrings(const char* s1, const char* s2)
-{
-	int counter=0;
-	while(1)
-	{
-		//same length && change not detected => equal
-		if(s1[counter]==0 && s2[counter]==0)
-			return true;
-		//first shorter
-		if(s1[counter]==0 && s2[counter]!=0)
-			return false;
-		//second shorter
-		if(s1[counter]!=0 && s2[counter]==0)
-			return false;
-		//byte is different
-		if((s1[counter]^s2[counter])!=0)
-			return false;
-		counter++;
-	}
-}
-*/
+// - - - - - - - - - - - - - - - - - - - - - 
 
-Memory::Memory()
+MemoryBlock::MemoryBlock(void* p, MEMTYPE type)
+{
+	this->p=p;
+	this->type=type;
+}
+
+MemoryBlock::~MemoryBlock()
+{
+	if(type==MALLOC)
+		free(p);
+	else if(type==NEW)
+		delete (Generic*)p;
+	else if(type==NEWARR)
+		delete [] (Generic*)p;
+	else 
+		debug(4, "Attempt to free memory with unknown type.");
+}
+// - - - - - - - - - - - - - - - - - - - - - 
+
+Memory::Memory(int max)
 {
 	debug(9, "Creating memory structure.");
-	max=32;
-	count=0;
-	mems = (void**)malloc(max*sizeof(void*));
+	this->max=max;
+	mems = (MemoryBlock***)malloc(max*sizeof(MemoryBlock**));
 	if(mems==NULL)
 	{
 		printf("E: Cannot allocate memory structure, exiting!\n");
 		exit(1);
 	}
-	types = (MEMTYPE*)malloc(max*sizeof(MEMTYPE));
-	if(types==NULL)
+	counts=(int*)malloc(max*sizeof(int));
+	if(counts==NULL)
 	{
-		printf("E: Cannot allocate memory type structure, exiting!\n");
+		printf("E: Cannot allocate memory counts structure. Exiting!");
+		free(mems);
 		exit(1);
+	}
+	maxes = (int*)malloc(max*sizeof(int));
+	if(maxes==NULL)
+	{
+		printf("E: Cannot allocate memory maxes structure. Exiting!");
+		free(mems);
+		free(counts);
+		exit(1);
+	}
+	int maxesvalue=max/8;
+	for(int i=0; i<max; i++)
+	{
+		maxes[i]=maxesvalue;
+		counts[i]=0;
+		mems[i]=(MemoryBlock**)malloc(maxesvalue*sizeof(MemoryBlock*));
+		if(mems[i]==NULL)
+		{
+			printf("E: Cannot allocate memory bucket structure. Exiting!");
+			for(int j=0; j<i; j++)
+				free(mems[i]);
+			free(maxes);
+			free(counts);
+			free(mems);
+			exit(1);
+		}
 	}
 }
 
 Memory::~Memory()
 {
-	FreeAll();
-	free(mems);
-	free(types);
-	debug(9, "Memory structure is clean and it is being deleted.");
+	FreeThis();
 }
 
-void Memory::More()
+void Memory::More(int bucket)
 {
-	debug(9, "Resizing memory from %d to %d\n.", max, max*2);
-	max*=2;
-	void** tmpmems=(void**)realloc(mems, max*sizeof(void*));
+	debug(9, "Resizing memory bucket %d from %d to %d\n.", bucket, maxes[bucket], maxes[bucket]*2);
+	maxes[bucket]*=2;
+	MemoryBlock** tmpmems=(MemoryBlock**)realloc(mems[bucket], maxes[bucket]*sizeof(MemoryBlock*));
 	if(tmpmems==NULL)
 	{
 		printf("E: Resizing memory failed. Exiting...\n");
-		FreeAll();
+		FreeThis();
 		exit(1);
 	}
-	mems=tmpmems;
-	MEMTYPE* tmptypes = (MEMTYPE*)realloc(types, max*sizeof(MEMTYPE));
-	if(types==NULL)
-	{
-		printf("E: Resizing memory type failed. Exiting...\n");
-		FreeAll();
-		exit(1);
-	}
-	types=tmptypes;
+	mems[bucket]=tmpmems;
 }
 
 bool Memory::Add(void* m, MEMTYPE type, bool exitonfail, const char* msgonfail)
@@ -111,63 +123,65 @@ bool Memory::Add(void* m, MEMTYPE type, bool exitonfail, const char* msgonfail)
 		printf("E: %s\n", msgonfail);
 		if(exitonfail)
 		{
-			FreeAll();
+			FreeThis();
 			exit(1);
 		}
 		return false;
 	}
-	if(count>max-1)
-		More();
-	mems[count]=m;
-	types[count]=type;
-	count++;
+	int hash = GetHash(m);
+	if(counts[hash]>maxes[hash]-1)
+		More(hash);
+	MemoryBlock* newblock = new MemoryBlock(m, type);
+	mems[hash][counts[hash]]=newblock;
+	counts[hash]++;
 	return true;
 }
 
 void Memory::FreeAll()
 {
 	debug(9, "~~~Cleaning memory:");
-	if(types==NULL) //otherwise clang is not happy
-		return;
-	for(int i=count-1; i>=0; i--)
-		if(mems[i]!=NULL)
+	for(int i=0; i<max; i++)
+	{
+		for(int j=0; j<counts[i]; j++)
 		{
-			debug(9, "~~~  Freeing memory %p.", mems[i]);
-			if(types[i]==MALLOC)
-				free(mems[i]);
-			else if(types[i]==NEW)
-				delete (Generic*)mems[i];
-			else if(types[i]==NEWARR)
-				delete [] (Generic*)mems[i];
-			else 
-				debug(4, "Attempt to free memory with unknown type.");
-			mems[i]=NULL;
-			types[i]=NONE;
-			//count--;
+			delete mems[i][j];
+			mems[i][j]=NULL;
 		}
+		counts[i]=0;
+	}
 }
 
 void Memory::Free(void* m)
 {
-	for(int i=0; i<count; i++)
-	{
-		if(mems[i]==m)
+	int hash = GetHash(m);
+	for(int i=0; i<counts[hash]; i++)
+		if(mems[hash][i]->p==m)
 		{
-			debug(9, "~~~  Freeing specific memory %p.", m);
-			if(types[i]==MALLOC)
-				free(m);
-			else if(types[i]==NEW)
-				delete (Generic*)mems[i];
-			else if(types[i]==NEWARR)
-				delete [] (Generic*)mems[i];
-			else
-				debug(4, "Attempt to free memory with unknown type.");
-			count--;
-			mems[i]=mems[count];
-			mems[count]=NULL;
-			types[i]=types[count];
-			types[count]=NONE;
+			delete mems[hash][i];
+			mems[hash][i]=mems[hash][counts[hash]-1];
+			counts[hash]--;
 			break;
 		}
-	}
 }
+
+void Memory::FreeThis()
+{
+	FreeAll();
+	for(int i=0; i<max; i++)
+		free(mems[i]);
+	free(mems);
+	free(counts);
+	free(maxes);
+	debug(9, "Memory structure is clean and it is being deleted.");
+}
+
+int Memory::GetHash(void* p)
+{
+	int hash = ((int)p)%max;
+	if(hash<0)
+		hash=-hash;
+	debug(8, "Memory hash for %p: %d", p, hash);
+	return hash;
+}
+
+

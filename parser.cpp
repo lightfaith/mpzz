@@ -47,11 +47,12 @@ Nodes* gmlparse(const char* file)
 		memory->FreeAll();
 		exit(1);
 	}
-	//fread(input, 1, inputsize, f);
-	//fclose(f);	
+	fread(input, 1, inputsize, f);
+	fclose(f);	
 	while(state<11)
 	{
-		c=fgetc(f);//input[inputcount++];
+		//c=fgetc(f);
+		c=input[inputcount++];
 		if(c==EOF)//if(c==0) //end of input? stop this madness
 			break;
 		else if(c==' ' || c=='\t' || c=='\n' || c=='\r' || c=='\v') //whitespace, part complete
@@ -272,7 +273,7 @@ Nodes* gmlparse(const char* file)
 	} //end of while
 
 	//close file, free unnecessary buffers
-	fclose(f);
+	//fclose(f);
 	debug(1, "Data successfully loaded (%d nodes, %d edges).", result->count, edgecount);
 	memory->Free(buffer);
 	//free(filestack);

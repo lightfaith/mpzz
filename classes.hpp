@@ -11,7 +11,7 @@ using namespace std;
 class Node;
 class Connections;
 class Nodes;
-class HashMap;
+class NodeHashMap;
 
 class Node : Generic
 {
@@ -54,7 +54,7 @@ class Nodes : Generic
 	public:
 		int count;
 		Node** nodes;
-		HashMap* hashmap;
+		NodeHashMap* hashmap;
 		Nodes();
 		~Nodes();
 		
@@ -65,7 +65,7 @@ class Nodes : Generic
 		void SPF(Node* root, const char* filename);
 };
 
-class HashMap : Generic
+class NodeHashMap : Generic
 {
 	private:
 		int max;
@@ -75,8 +75,8 @@ class HashMap : Generic
 		int* counts;
 		Node*** buckets;
 		
-		HashMap(int max);
-		~HashMap();
+		NodeHashMap(int max);
+		~NodeHashMap();
 		void Add(Node* n);
 		void More(int bucket);
 		void Free();
