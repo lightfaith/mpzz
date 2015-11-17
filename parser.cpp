@@ -1,14 +1,118 @@
-#include "classes.hpp"
-#include "lib.hpp"
+#include "parser.hpp"
 #define BUFFSIZE 256
+
+FileReader::FileReader(const char* filename)
+{
+	memory->Add(this, NEW, true, "Cannot create FileReader!");
+	this->filename=filename;
+	//get file size for allocation
+	length = GetFileSize();
+	if(length==0)
+	{
+		printf("E: File is empty or broken. Exiting.\n");
+		delete memory;
+		exit(1);
+	}
+	counter=0;
+	inmemory=true;
+
+	//try to allocate space
+	content = (char*)malloc(length*sizeof(char)+1);
+	memory->Add(content, MALLOC, false, "Cannot allocate memory for file. File will be read by character.");
+	if(content==NULL)
+	{
+		//read by char, open file
+		inmemory=false;
+		f = fopen(filename, "r");
+	    if(f==NULL)
+		{   
+			printf("E: Unable to open file '%s' for fgetc. Error %d: %s\n", filename, errno, strerror(errno));
+			delete memory;
+			exit(1);
+		}
+	}
+	else	
+	{
+		//copy file content
+		inmemory=true;
+		f = fopen(filename, "r");
+	    if(f==NULL)
+		{   
+			printf("E: Unable to open file '%s' for copy. Error %d: %s\n", filename, errno, strerror(errno));
+			delete memory;
+			exit(1);
+		}
+		fread(content, 1, length, f);
+		content[length]=0;
+		fclose(f);
+		f=NULL;
+	}
+}
+
+FileReader::~FileReader()
+{
+	if(f!=NULL)
+		fclose(f);
+	if(inmemory)
+		memory->Free(content);
+}
+
+long FileReader::GetFileSize()
+{
+    //get size of file (not good for files 4GB+)
+    FILE *f = fopen(filename, "r");
+    if(f==NULL)
+    {   
+        printf("E: Unable to open file '%s' for file size. Error %d: %s\n", filename, errno, strerror(errno));
+        delete memory;
+        exit(1);
+    }   
+    fseek(f, 0, SEEK_END);
+    long size=ftell(f);
+    if(fclose(f)==EOF)
+    {   
+        printf("E: Unable to close file '%s'\n", filename);
+		delete memory;
+        exit(1);
+    }   
+    return size;
+}
+
+char FileReader::GetNext()
+{
+	//at the end
+	if(counter>=length-1)
+		return 0;
+	if(inmemory)
+		return content[counter++]; //next char of array
+	else
+		return fgetc(f); //next char from file
+}
+
+void FileReader::Reset()
+{
+	if(inmemory)
+		counter=0;
+	else
+		fseek(f, 0, SEEK_SET);
+}
+
+long FileReader::GetLength()
+{
+	return length;
+}
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 
 Nodes* gmlparse(const char* file)
 {
 	debug(1, "FILE %s will be parsed as GML...", file);
-	long inputsize=getfilesize(file); //size of input file
-	char* input = (char*)malloc(sizeof(char)*inputsize); //whole input string
-	memory->Add(input, MALLOC, true, "Cannot allocate input buffer.");
-	long inputcount=0; //char counter
+	//long inputsize=getfilesize(file); //size of input file
+	//char* input = (char*)malloc(sizeof(char)*inputsize); //whole input string
+	//memory->Add(input, MALLOC, true, "Cannot allocate input buffer.");
+	//long inputcount=0; //char counter
 	Nodes* result = new Nodes(); //result Nodes structure
 	memory->Add(result, NEW, true, "Cannot allocate node list.");
 	char* buffer = (char*)malloc(BUFFSIZE*sizeof(char)); //temporary buffer
@@ -41,19 +145,10 @@ Nodes* gmlparse(const char* file)
 	debug(1, "Parsing started.");
 	
 	//read file
-	FILE *f =  fopen(file, "r");
-	if(f==NULL)
-	{
-		printf("E: Cannot open input file '%s'.\n", file);
-		delete memory;
-		exit(1);
-	}
-	fread(input, 1, inputsize, f);
-	fclose(f);
-
+	FileReader *fr = new FileReader(file); //adds itself to memory management
 	while(state<11)
 	{
-		c=input[inputcount++];
+		c=fr->GetNext();
 		if(c==0) //end of input? stop this madness
 			break;
 		else if(c==' ' || c=='\t' || c=='\n' || c=='\r' || c=='\v') //whitespace, part complete
@@ -73,7 +168,7 @@ Nodes* gmlparse(const char* file)
 					}
 					else
 					{
-						debug(9, "Wrong keyword '%s' in state %d", buffer, state);
+						debug(8, "Wrong keyword '%s' in state %d", buffer, state);
 					}
 					break;
 				}
@@ -86,7 +181,7 @@ Nodes* gmlparse(const char* file)
 					}
 					else 
 					{
-						debug(9, "Wrong keyword '%s' in state %d", buffer, state);
+						debug(8, "Wrong keyword '%s' in state %d", buffer, state);
 					}
 					break;
 				}
@@ -109,7 +204,7 @@ Nodes* gmlparse(const char* file)
 					}
 					else
 					{
-						debug(9, "Wrong keyword '%s' in state %d", buffer, state);
+						debug(8, "Wrong keyword '%s' in state %d", buffer, state);
 					}
 					break;
 				}
@@ -122,7 +217,7 @@ Nodes* gmlparse(const char* file)
 					}
 					else 
 					{
-						debug(9, "Wrong keyword '%s' in state %d", buffer, state);
+						debug(8, "Wrong keyword '%s' in state %d", buffer, state);
 					}
 					break;
 				}
@@ -156,7 +251,7 @@ Nodes* gmlparse(const char* file)
 					}
 					else 
 					{
-						debug(9, "   Wrong keyword '%s' in state %d", buffer, state);
+						debug(8, "   Wrong keyword '%s' in state %d", buffer, state);
 					}
 					break;
 				}
@@ -185,7 +280,7 @@ Nodes* gmlparse(const char* file)
 					}
 					else 
 					{
-						debug(9, "   Wrong keyword '%s' in state %d", buffer, state);
+						debug(8, "   Wrong keyword '%s' in state %d", buffer, state);
 					}
 					break;
 				}
@@ -214,7 +309,7 @@ Nodes* gmlparse(const char* file)
 						Node* tmptarget = result->Find(tmptargetid);
 						if(tmpsource==NULL || tmptarget==NULL || tmpmetric<=0)
 						{
-							debug(6, "    Edge found is weird. Metric=%d. Skipping...", tmpmetric);
+							debug(8, "    Edge found is weird. Metric=%d. Skipping...", tmpmetric);
 						}
 						else
 						{
@@ -223,18 +318,18 @@ Nodes* gmlparse(const char* file)
 						}
 						if(tmpsource==NULL)
 						{
-							debug(9, "     tmpsource NULL (looked for '%s')", tmpsourceid);
+							debug(8, "     tmpsource NULL (looked for '%s')", tmpsourceid);
 						}
 						if(tmptarget==NULL)
 						{
-							debug(9, "     tmptarget NULL (looked for '%s')", tmptargetid);
+							debug(8, "     tmptarget NULL (looked for '%s')", tmptargetid);
 						}
 						
 						debug(6, "   Correct keyword '%s'. Transiting to %d", buffer, state);
 					}
 					else 
 					{
-						debug(9, "   Wrong keyword '%s' in state %d", buffer, state);					
+						debug(8, "   Wrong keyword '%s' in state %d", buffer, state);					
 					}
 					break;
 				}
@@ -280,8 +375,8 @@ Nodes* gmlparse(const char* file)
 	} //end of while
 
 	debug(1, "Data successfully loaded (%d nodes, %d edges).", result->count, edgecount);
+	memory->Free(fr);
 	memory->Free(buffer);
-	memory->Free(input);
 	memory->Free(tmpid);
 	memory->Free(tmpsourceid);
 	memory->Free(tmptargetid);

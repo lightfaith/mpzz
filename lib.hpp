@@ -6,17 +6,21 @@
 #include<unistd.h>
 #include<string.h>
 #include<limits.h>
-//#include<float.h>
+#include<errno.h>
 
 class Memory;
-class Generic{};
+class Generic
+{
+	public:
+		virtual ~Generic();
+};
 
 
 //ENUM for different types of memories (they are freed/deleted accordingly).
 //Objects are cast to Generic (Everything mine, no existing structures)
 typedef enum
 {
-	NONE, MALLOC, NEW, NEWARR
+	NONE, MALLOC, NEW, NEWARR//, MMAP
 } MEMTYPE;
 
 extern int debuglevel;

@@ -1,5 +1,7 @@
 #include "lib.hpp"
 
+Generic::~Generic(){}
+
 void debug(int level, const char* format, ...)
 {
 	//print info if wanted
@@ -52,7 +54,7 @@ MemoryBlock::~MemoryBlock()
 	else if(type==NEWARR)
 		delete [] (Generic*)p;
 	else 
-		debug(4, "Attempt to free memory with unknown type.");
+		debug(9, "Attempt to free memory with unknown type.");
 }
 // - - - - - - - - - - - - - - - - - - - - - 
 
@@ -126,7 +128,7 @@ void Memory::More(int bucket)
 
 bool Memory::Add(void* m, MEMTYPE type, bool exitonfail, const char* msgonfail)
 {
-	debug(9, "Adding memory pointer into memory structure (%p).", m);
+	debug(9, "___Adding memory pointer into memory structure (%p).", m);
 	//allocation failed?
 	if(type==MALLOC && m==NULL)
 	{
@@ -153,12 +155,14 @@ bool Memory::Add(void* m, MEMTYPE type, bool exitonfail, const char* msgonfail)
 
 void Memory::FreeAll()
 {
-	debug(9, "~~~Cleaning memory:");
 	for(int i=0; i<max; i++)
 	{
 		for(int j=0; j<counts[i]; j++)
 		{
+			if(mems[i][j]==NULL)
+				continue;
 			//delete Memory Block (will free/delete/delete[] its content)
+			debug(9, "~~~Cleaning memory %p :", mems[i][j]->p);
 			delete mems[i][j];
 			mems[i][j]=NULL;
 		}
@@ -171,15 +175,21 @@ void Memory::Free(void* m)
 	int hash = GetHash(m);
 	//find MemoryBlock to free
 	for(int i=0; i<counts[hash]; i++)
+	{
+		if(mems[hash][i]==NULL)
+			continue;
 		if(mems[hash][i]->p==m)
 		{
 			//delete Memory Block (will free/delete/delete[] its content)
+			debug(9, "~~~Cleaning specific memory %p :", mems[hash][i]->p);
 			delete mems[hash][i];
 			//re-organize bucket
 			mems[hash][i]=mems[hash][counts[hash]-1];
+			mems[hash][counts[hash]-1]=NULL;
 			counts[hash]--;
 			break;
 		}
+	}
 }
 
 void Memory::FreeThis()
@@ -201,7 +211,7 @@ int Memory::GetHash(void* p)
 	int hash = *((int*)(&p))%max;
 	if(hash<0)
 		hash=-hash;
-	debug(8, "Memory hash for %p: %d", p, hash);
+	debug(9, "###Memory hash for %p: %d", p, hash);
 	return hash;
 }
 

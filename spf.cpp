@@ -31,7 +31,7 @@ int main(int argc, char** argv)
 
 	if(nodes->count<100)
 		nodes->Print();
-
+	debug(2, "------------------------");
 	//find root by name
 	Node* root = nodes->Find(argv[3]);
 	if(root==NULL)

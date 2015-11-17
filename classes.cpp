@@ -4,7 +4,7 @@ Node::Node(char* sid)
 {
 	//set ID
 	this->sid=sid;
-	debug(9, "Creating node %s", sid);
+	debug(5, "Creating node %s", sid);
 	//set NULL predecessor and "infinite" distance
 	predecessor=NULL;
 	hopcount=INT_MAX;
@@ -12,9 +12,6 @@ Node::Node(char* sid)
 
 Node::~Node()
 {
-	debug(9, "Freeing node %s", sid);
-	memory->Free(sid);
-	memory->Free(neighbors);
 }
 
 void Node::Print()
@@ -45,20 +42,19 @@ Node** Node::GetPath()
 	memory->Add(result, MALLOC, true, "Cannot get path for node.");
 	//start with this node
 	Node* p = this;
-	debug(8, "Getting path for %s:", p->sid);
+	debug(5, "Getting path for %s:", p->sid);
 	for(int i=hopcount-1; i>=0; i--)
 	{
-		debug(8, "  hop #%d: %s", hopcount-i-1, p->sid);
+		debug(5, "  hop #%d: %s", hopcount-i-1, p->sid);
 		//add to list
 		result[i]=p;
 		//move to predecessor
 		p=p->predecessor;
 	}
 	if(p->predecessor!=NULL)
-		debug(1, "  Some problem with getpath()...");
+		debug(3, "  Some problem with getpath()...");
 
 	p=NULL;	
-	debug(8, "Path for %s gathered.", sid);
 	//return path
 	return result;
 }
@@ -66,7 +62,7 @@ Node** Node::GetPath()
 
 Connections::Connections()
 {
-	debug(9, "Creating connections...");
+	debug(5, " Creating connections...");
 	//set default max and count
 	max=16;
 	count=0;
@@ -74,19 +70,15 @@ Connections::Connections()
 	memory->Add(nodes, MALLOC, false, "Cannot create list of neighbors.");
 	metrics = (float*)malloc(max*sizeof(float));
 	memory->Add(metrics, MALLOC, false, "Cannot create list of neighbor distances.");
-	debug(9, "Connections created.");
 }
 
 Connections::~Connections()
 {
-	debug(9, "Freeing connections...");
-	memory->Free(nodes); nodes=NULL;
-	memory->Free(metrics); metrics=NULL;
 }
 
 void Connections::Add(Node* n, float m)
 {
-	debug(9, "Adding new connection: %s with metric of %.3f", n->sid, m);
+	debug(5, "Adding new connection to %s with metric of %.3f", n->sid, m);
 	//resize if necessary
 	if(count>=max-1)
 		More();
@@ -129,15 +121,12 @@ Nodes::Nodes()
 
 Nodes::~Nodes()
 {
-	debug(5, "Node list is being destroyed...");
-	//Free(true);
-	memory->Free(nodes); nodes=NULL;
-	memory->Free(hashmap); hashmap=NULL;
+	debug(9, "Node list is being destroyed...");
 }
 
 void Nodes::Add(Node *n)
 {
-	debug(8, "Adding new node into list: %s", n->sid);
+	debug(5, " Adding new node into list: %s", n->sid);
 	//resize if necessary
 	if(count>=max-1)
 		More();
@@ -148,7 +137,7 @@ void Nodes::Add(Node *n)
 
 void Nodes::More()
 {
-	debug(5, "Resizing node list from %d to %d", max, max*2);
+	debug(9, "Resizing node list from %d to %d", max, max*2);
 	max*=2;
 	Node** newnodes = (Node**)malloc(max*sizeof(Node*));
 	memory->Add(newnodes, MALLOC, true, "Cannot resize node list");
@@ -174,8 +163,10 @@ Node* Nodes::Find(const char* sid)
 
 void Nodes::Reindex()
 {
-	//resize hash map (count/2 => cca 15% of total time for Find())
+	//resize hash map (count/2 => cca 10-25% of total time for Find(), which is probably fine...)
+	debug(5, "Reindexing hash map.");
 	NodeHashMap* newhashmap = new NodeHashMap(count/2);
+	memory->Add(newhashmap, NEW, true, "Cannot reindex hashmap.");
 	for(int i=0; i<count; i++)
 		newhashmap->Add(nodes[i]);
 	memory->Free(hashmap);
@@ -225,7 +216,7 @@ void Nodes::SPF(Node* root, const char* filename)
 			}
 		}
 		
-		debug(6, "Found best: %s (metric %.3f).", usable[bestid]->sid, bestmetric);
+		debug(4, "  Found best: %s (metric %.3f).", usable[bestid]->sid, bestmetric);
 		
 		//add it into used
 		used[usedcount]=usable[bestid];
@@ -234,10 +225,10 @@ void Nodes::SPF(Node* root, const char* filename)
 		usablem[bestid]=usablem[usablecount-1];
 		usablecount--;
 		
-		debug(8, "Usables before update:");
+		debug(6, "    Usables before update:");
 		for(int i=0; i<usablecount; i++)
 		{
-			debug(8, "  %s (metric %.3f)", usable[i]->sid, usablem[i]);
+			debug(6, "      %s (metric %.3f)", usable[i]->sid, usablem[i]);
 		}
 		//add neighbors into usable / update metric
 		for(int i=0; i<used[usedcount]->neighbors->count; i++)
@@ -282,10 +273,10 @@ void Nodes::SPF(Node* root, const char* filename)
 			}
 		}
 		
-		debug(8, "Usables after update:");
+		debug(6, "    Usables after update:");
 		for(int i=0; i<usablecount; i++)
 		{
-			debug(8, "  %s (metric %.3f)", usable[i]->sid, usablem[i]);
+			debug(6, "      %s (metric %.3f)", usable[i]->sid, usablem[i]);
 		}
 		usedcount++;
 	}
@@ -302,19 +293,17 @@ void Nodes::SPF(Node* root, const char* filename)
 	}
 	for(int i=0; i<usedcount; i++)
 	{
-		debug(7, "Writing info about %s", used[i]->sid);
 		//get path
 		Node** path = used[i]->GetPath();
 		
 		//print metric and root
 		fprintf(f, "(%s)->(%s) = %.3f: (%s)", root->sid, used[i]->sid, used[i]->totalmetric, root->sid);
-		debug(7, "  Writing path for %s (hopcount=%d, metric=%.3f)", used[i]->sid, used[i]->hopcount, used[i]->totalmetric);
+		debug(3, "  Writing path for %s (hopcount=%d, metric=%.3f)", used[i]->sid, used[i]->hopcount, used[i]->totalmetric);
 		//print following nodes
 		for(int j=0; j<used[i]->hopcount; j++)
 			if(path[j]!=NULL)
 				fprintf(f, "->(%s)", path[j]->sid);
 		fprintf(f, "\n");
-		debug(7, "Info about %s written.", used[i]->sid);
 	}
 	//not every node in used?
 	if(usedcount<count)
@@ -340,7 +329,7 @@ NodeHashMap::NodeHashMap(int max)
 	//create hashmap
 	buckets = (Node***)malloc(max*sizeof(Node**));
 	memory->Add(buckets, MALLOC, true, "Cannot create 'buckets' list for HashMap.");
-	int maxesvalue=max/8;
+	int maxesvalue=3;
 	//create buckets, init maxes and counts
 	for(int i=0; i<max; i++)
 	{
@@ -354,23 +343,12 @@ NodeHashMap::NodeHashMap(int max)
 
 NodeHashMap::~NodeHashMap()
 {
-	//free maxes and counts
-	memory->Free(maxes); maxes=NULL;
-	memory->Free(counts); counts=NULL;
-	//free buckets
-	for(int i=0; i<max; i++)
-	{
-		memory->Free(buckets[i]); buckets[i]=NULL;
-	}
-	//free hashmap
-	memory->Free(buckets);
-	
 }
 
 
 void NodeHashMap::Add(Node* n)
 {
-	debug(8, "Adding new node into hashmap.");
+	debug(5, " Adding new node into hashmap.");
 	int hash = GetHash(n);
 	//resize if needed
 	if(counts[hash]>=maxes[hash]-1)
@@ -382,7 +360,7 @@ void NodeHashMap::Add(Node* n)
 
 void NodeHashMap::More(int bucket)
 {
-	debug(5, "Resizing hashmap bucket %d from %d to %d", bucket, maxes[bucket], maxes[bucket]*2);
+	debug(9, "Resizing hashmap bucket %d from %d to %d", bucket, maxes[bucket], maxes[bucket]*2);
 	maxes[bucket]*=2;
 	Node** newbucket = (Node**)malloc(maxes[bucket]*sizeof(Node*));
 	memory->Add(newbucket, MALLOC, true, "Cannot resize bucket in HashMap.");
@@ -408,23 +386,20 @@ int NodeHashMap::GetHash(const char* name)
 			break;
 		result+=name[counter++];
 	}
-	debug(7, "Hash for '%s'=%d", name, result%max);
+	debug(7, "  Hash for '%s'=%d", name, result%max);
 	return result%max;
 }
 
 Node* NodeHashMap::Find(const char* name)
 {
 	int hash = GetHash(name);
-	debug(7, "Getting hash for %s\n", name);
-	debug(9, "hash: %d", hash);
 	//for every node in bucket
 	for(int i=0; i<counts[hash]; i++)
 	{
-		debug(9, "hash=%d, i=%d, b[h][i]=%s, maxes[h]=%d", hash, i, buckets[hash][i]->sid, maxes[hash]);
 		if(strcmp(buckets[hash][i]->sid, name)==0)
 			return buckets[hash][i];
 	}
-	debug(3, "Node '%s' could not be found.", name);
+	debug(4, "Node '%s' could not be found.", name);
 	return NULL;
 }
 
