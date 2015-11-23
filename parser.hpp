@@ -23,5 +23,7 @@ class FileReader : Generic
 };
 
 Nodes* gmlparse(const char* file);
+Nodes* csvparse(const char* file);
+
 
 #endif

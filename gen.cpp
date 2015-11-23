@@ -39,12 +39,36 @@ void gml(int nodes, const char* filename)
 		exit(1);
 }
 
+void csv(int nodes, const char* filename)
+{
+	FILE *f = fopen(filename, "w");	
+	if(f==NULL)
+		exit(1);
+	//generate edges
+	for(int i=0; i<nodes; i++)
+	{
+		for(int j=0; j<nodes; j++)
+		{
+			if(i==j)
+				continue;
+
+			//skip sometimes to gain longer paths
+			if((rand()%100)<MISSRATIO)
+				continue;
+			fprintf(f, "%d;%d;%d\n", i, j, rand()%(nodes*100)+1);
+		}
+	}
+	if(fclose(f)==EOF)
+		exit(1);
+}
+
+
 
 int main(int argc, char**argv)
 {
 	if(argc<3)
 	{
-		printf("Usage: %s gml <nodes> <outputfile>\n", argv[0]);
+		printf("Usage: %s (gml|csv) <nodes> <outputfile>\n", argv[0]);
 		exit(1);
 	}
 	
@@ -53,6 +77,11 @@ int main(int argc, char**argv)
 	if(strncmp(argv[1], "gml", 3)==0) //create gml file
 	{
 		gml(nodes, argv[3]);
+		return 0;
+	}
+	if(strncmp(argv[1], "csv", 3)==0) //create gml file
+	{
+		csv(nodes, argv[3]);
 		return 0;
 	}
 }

@@ -15,7 +15,7 @@ FileReader::FileReader(const char* filename)
 	}
 	counter=0;
 	inmemory=true;
-
+	f=NULL;
 	//try to allocate space
 	content = (char*)malloc(length*sizeof(char)+1);
 	memory->Add(content, MALLOC, false, "Cannot allocate memory for file. File will be read by character.");
@@ -53,8 +53,8 @@ FileReader::~FileReader()
 {
 	if(f!=NULL)
 		fclose(f);
-	if(inmemory)
-		memory->Free(content);
+	//if(inmemory)
+	//	memory->Free(content);
 }
 
 long FileReader::GetFileSize()
@@ -361,7 +361,10 @@ Nodes* gmlparse(const char* file)
 		}
 		else //normal character, treat as keyword or value part
 		{
-			buffer[wordlen]=c;
+			if(state==10 && c==',')//decimal point for metric
+				buffer[wordlen]='.';
+			else 
+				buffer[wordlen]=c;
 			//we don't want any buffer overflow
 			if(wordlen<BUFFSIZE-2)
 				wordlen++;
@@ -384,3 +387,140 @@ Nodes* gmlparse(const char* file)
 }
 
 
+
+Nodes* csvparse(const char* file)
+{
+	debug(1, "FILE %s will be parsed as CSV...", file);
+	Nodes* result = new Nodes();
+	memory->Add(result, NEW, true, "Cannot allocate node list.");
+	char* buffer = (char*)malloc(BUFFSIZE*sizeof(char));
+	memory->Add(buffer, MALLOC, true, "Cannot allocate temporary buffer.");
+
+	int edgecount=0;
+	int wordlen=0;	
+	int c; //single character
+	int state=0; //parsing state
+	char* tmpid1 = (char*)malloc(BUFFSIZE*sizeof(char));
+	memory->Add(tmpid1, MALLOC, true, "Cannot allocate temporary buffer for first ID.");
+	int tmpid1len;
+	char* tmpid2 = (char*)malloc(BUFFSIZE*sizeof(char));
+	memory->Add(tmpid2, MALLOC, true, "Cannot allocate temporary buffer for second ID.");
+	int tmpid2len;
+	float tmpmetric;
+
+	//null those buffers
+	for(int i=0; i<BUFFSIZE; i++)
+	{
+		buffer[i]=0;
+		tmpid1[i]=0;
+		tmpid2[i]=0;
+	}
+
+	debug(1, "Parsing started.");
+	FileReader *fr = new FileReader(file); //adds itself to memory management
+	while(1)
+	{
+		c=fr->GetNext();
+		if(c==0 && wordlen==0) //end of input? stop this madness!
+			break;
+		else if(c==0 || c==' '|| c=='\t' || c=='\n' || c=='\r' || c=='v') //whitespace, treat as new info
+		{
+			if(state==2)
+			{
+				buffer[wordlen]=0;
+				state=0;
+				tmpmetric=atof(buffer);
+				debug(6, "    Loaded metric of new edge: %.3f. Transiting to %d.", tmpmetric, state);
+				//now find associated nodes and update changes
+				Node* source = result->Find(tmpid1);
+				//brand new?
+				if(source==NULL)
+				{
+					char* sid=(char*)malloc((tmpid1len+1)*sizeof(char));
+					memcpy(sid, tmpid1, tmpid1len);
+					sid[tmpid1len]=0;
+					memory->Add(sid, MALLOC, true, "Cannot allocate first node sid.");
+					source = new Node(sid);
+					memory->Add(source, NEW, true, "Cannot create new node.");
+					Connections* c = new Connections();
+					memory->Add(c, NEW, true, "Cannot create connections for node.");
+					source->neighbors=c;
+					result->Add(source);
+					if(result->count%50==0)
+					{
+						result->Reindex();
+					}
+				}
+				Node* target = result->Find(tmpid2);
+				//brand new?
+				if(target==NULL)
+				{
+					char* sid=(char*)malloc((tmpid2len+1)*sizeof(char));
+					memcpy(sid, tmpid2, tmpid2len);
+					sid[tmpid2len]=0;
+					memory->Add(sid, MALLOC, true, "Cannot allocate first node sid.");
+					target = new Node(sid);
+					memory->Add(target, NEW, true, "Cannot create new node.");
+					Connections* c = new Connections();
+					memory->Add(c, NEW, true, "Cannot create connections for node.");
+					target->neighbors=c;
+					result->Add(target);
+					if(result->count%50==0)
+					{
+						result->Reindex();
+					}
+				}
+				source->neighbors->Add(target, tmpmetric);
+				edgecount++;
+				wordlen=0;
+			}
+		}
+		else if(c==';') //part complete
+		{
+			buffer[wordlen]=0;
+			switch(state)
+			{
+				case 0: //loading first node id
+				{
+					state=1;
+					strncpy(tmpid1, buffer, wordlen+1);
+					tmpid1[wordlen]=0;
+					tmpid1len=wordlen;
+					debug(6, "Loaded source of edge: %s, transiting to %d.", buffer, state);
+					break;
+				}
+				case 1: //loading second node id
+				{
+					state=2;
+					strncpy(tmpid2, buffer, wordlen+1);
+					tmpid2[wordlen]=0;
+					tmpid2len=wordlen;
+					debug(6, "Loaded target of edge: %s, transiting to %d.", buffer, state);
+					break;
+				}
+			}
+			wordlen=0;
+		}
+		else //normal character
+		{
+			if(c==',' && state==2) //decimal point for metric
+				buffer[wordlen]='.';
+			else
+				buffer[wordlen]=c;
+			if(wordlen<BUFFSIZE-2)
+				wordlen++;
+			else
+			{
+				buffer[BUFFSIZE-1]=0;
+				debug(3, "Keyword '%s' too long. Will be malformed.", buffer);
+			}
+		}
+	} //end of while
+	result->Reindex(); //probably not as effective here...
+	debug(1, "Data successfully loaded (%d nodes, %d edges).", result->count, edgecount);
+	memory->Free(fr);
+	memory->Free(buffer);
+	memory->Free(tmpid1);
+	memory->Free(tmpid2);
+	return result;
+}
