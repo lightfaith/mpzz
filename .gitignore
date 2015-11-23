@@ -32,6 +32,9 @@ old/*
 
 # Large files
 data/*000.gml
+data/*000.csv
+data/*500.gml
+data/*500.csv
 
 # Benchmark folder
 benchmark/*
