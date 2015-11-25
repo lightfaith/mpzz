@@ -194,6 +194,10 @@ void Memory::Free(void* m)
 
 void Memory::FreeThis()
 {
+	debug(9, "Memory hashmap distribution before terminating: ");
+	for(int i=0; i<max; i++)
+		debug(9, "Bucket %d: %d", i, counts[i]);
+	
 	//first free every Memory Block
 	FreeAll();
 	//free buckets, hashmap, counts and maxes
@@ -208,11 +212,22 @@ void Memory::FreeThis()
 int Memory::GetHash(void* p)
 {
 	// abs((pointer value)%(number of buckets))
+	/*
 	int hash = *((int*)(&p))%max;
 	if(hash<0)
 		hash=-hash;
 	debug(9, "###Memory hash for %p: %d", p, hash);
 	return hash;
+*/
+	// http://burtleburtle.net/bob/hash/integer.html
+	long long hash = *((int*)(&p));
+	hash += ~(hash<<15);
+    hash ^=  (hash>>10);
+    hash +=  (hash<<3);
+    hash ^=  (hash>>6);
+    hash += ~(hash<<11);
+    hash ^=  (hash>>16);
+	return (int)(hash%max);
 }
 
 

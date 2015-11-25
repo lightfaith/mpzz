@@ -1,5 +1,6 @@
 #include "parser.hpp"
 #define BUFFSIZE 256
+#define REINDEXVALUE 1200
 
 FileReader::FileReader(const char* filename)
 {
@@ -407,6 +408,7 @@ Nodes* csvparse(const char* file)
 	memory->Add(tmpid2, MALLOC, true, "Cannot allocate temporary buffer for second ID.");
 	int tmpid2len;
 	float tmpmetric;
+	Node* lastsource=NULL;
 
 	//null those buffers
 	for(int i=0; i<BUFFSIZE; i++)
@@ -432,7 +434,14 @@ Nodes* csvparse(const char* file)
 				tmpmetric=atof(buffer);
 				debug(6, "    Loaded metric of new edge: %.3f. Transiting to %d.", tmpmetric, state);
 				//now find associated nodes and update changes
-				Node* source = result->Find(tmpid1);
+				
+				Node* source=NULL;
+				if(lastsource!=NULL)
+					if(strlen(lastsource->sid)==tmpid1len && strncmp(lastsource->sid, tmpid1, tmpid1len)==0)
+						source=lastsource;
+				if(source==NULL)
+					source = result->Find(tmpid1);
+				lastsource=source;
 				//brand new?
 				if(source==NULL)
 				{
@@ -446,7 +455,7 @@ Nodes* csvparse(const char* file)
 					memory->Add(c, NEW, true, "Cannot create connections for node.");
 					source->neighbors=c;
 					result->Add(source);
-					if(result->count%50==0)
+					if(result->count%REINDEXVALUE==0)
 					{
 						result->Reindex();
 					}
@@ -465,7 +474,7 @@ Nodes* csvparse(const char* file)
 					memory->Add(c, NEW, true, "Cannot create connections for node.");
 					target->neighbors=c;
 					result->Add(target);
-					if(result->count%50==0)
+					if(result->count%REINDEXVALUE==0)
 					{
 						result->Reindex();
 					}

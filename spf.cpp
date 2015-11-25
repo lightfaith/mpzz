@@ -3,7 +3,7 @@
 #include "parser.hpp"
 
 int debuglevel=0; //verbosity
-Memory* memory = new Memory(100); //memory management structure
+Memory* memory;  //memory management structure
 
 void printusage(const char* program)
 {
@@ -19,6 +19,7 @@ int main(int argc, char** argv)
 	debuglevel=atoi(argv[5]);
 	if(debuglevel<0 || debuglevel>9) //debug level weird
 		printusage(argv[0]);
+	memory = new Memory(100); //memory management structure
 
 	//choose method
 	int method=-1;
@@ -53,7 +54,8 @@ int main(int argc, char** argv)
 		delete memory;
 		exit(1);
 	}
-
+	//for(int i=0; i<nodes->hashmap->max; i++)
+	//	printf("Bucket %d: %d items\n", i, nodes->hashmap->counts[i]);
 	if(nodes->count<100)
 		nodes->Print();
 	debug(2, "------------------------");

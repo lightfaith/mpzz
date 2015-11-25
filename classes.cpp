@@ -171,6 +171,9 @@ void Nodes::Reindex()
 		newhashmap->Add(nodes[i]);
 	memory->Free(hashmap);
 	hashmap=newhashmap;
+	debug(5, "New hashmap distribution:");
+	for(int i=0; i<hashmap->max; i++)
+		debug(5, "  Bucket %d: %d", i, hashmap->counts[i]);
 }
 
 void Nodes::SPF(Node* root, const char* filename)
@@ -207,12 +210,17 @@ void Nodes::SPF(Node* root, const char* filename)
 	{
 		//find best
 		bestmetric=usablem[0];
-		for(int i=0; i<usablecount; i++)
+		for(int i=0; i<usablecount/2+1; i++)
 		{
 			if(usablem[i]<=bestmetric)
 			{
 				bestmetric=usablem[i];
 				bestid=i;
+			}
+			if(usablem[usablecount-i-1]<=bestmetric)
+			{
+				bestmetric=usablem[usablecount-i-1];
+				bestid=usablecount-i-1;
 			}
 		}
 		
@@ -377,16 +385,16 @@ int NodeHashMap::GetHash(Node* n)
 
 int NodeHashMap::GetHash(const char* name)
 {
+ 	//djb2: http://www.cse.yorku.ca/~oz/hash.html
+	int result=5381;
 	int counter=0;
-	int result=0;
-	//sum of ASCIIs of all characters % number of buckets
 	while(1)
 	{
 		if(name[counter]==0)
 			break;
-		result+=name[counter++];
+		result=result*33+name[counter];
+		counter++;
 	}
-	debug(7, "  Hash for '%s'=%d", name, result%max);
 	return result%max;
 }
 

@@ -68,9 +68,9 @@ class Nodes : Generic
 class NodeHashMap : Generic
 {
 	private:
-		int max; //max number of buckets
 		int* maxes; //max size of buckets
 	public:
+		int max; //max number of buckets
 		int* counts; //actual size of buckets
 		Node*** buckets; //hashmap of pointers to nodes
 		
