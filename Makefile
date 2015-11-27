@@ -1,6 +1,7 @@
-CC=scan-build g++
-#CC=g++
-CFLAGS= -g -Wall
+#CC=scan-build g++
+CC=g++
+#CFLAGS= -g -Wall
+CFLAGS= -g 
 
 all: spf gen
 

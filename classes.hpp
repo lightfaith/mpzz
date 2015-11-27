@@ -12,6 +12,8 @@ class Node;
 class Connections;
 class Nodes;
 class NodeHashMap;
+class QueueItem;
+class Queue;
 
 class Node : Generic
 {
@@ -20,12 +22,14 @@ class Node : Generic
 		Connections* neighbors; 
 		Node* predecessor; //pointer to predecessor (towards root)
 		int hopcount; //number of nodes to root 
-		float totalmetric; //distance from root
-		
+		double totalmetric; //distance from root
+		bool used; //used in SPF
+		QueueItem* qi; //used in SPF
+
 		Node(char* sid);
 		~Node();
 		void Print();
-		void SetPredecessor(Node* n, float metric);
+		void SetPredecessor(Node* n, double metric);
 		Node** GetPath(); // get all nodes from root to this Node
 };
 
@@ -37,11 +41,11 @@ class Connections : Generic
 	public:
 		int count; //actual number of nodes
 		Node** nodes; //array of pointers to nodes
-		float* metrics; //array of distance to each node
+		double* metrics; //array of distance to each node
 		
 		Connections();
 		~Connections();
-		void Add(Node* n, float m);
+		void Add(Node* n, double m);
 		void More(); //resizing method
 };
 
@@ -82,5 +86,36 @@ class NodeHashMap : Generic
 		int GetHash(Node* n); //hash computation method
 		int GetHash(const char* name); //hash computation method
 		Node* Find(const char* name); //search by ID method
+};
+
+class QueueItem : Generic
+{
+	public:
+		Node* node;
+		double metric;
+		QueueItem* prev;
+		QueueItem* next;
+
+		QueueItem(Node* node, double metric, QueueItem* prev, QueueItem* next);
+		//~QueueItem();
+		void Update(double metric);
+};
+
+class Queue : Generic
+{
+	private:
+		//QueueItem* head;
+		QueueItem* prehead;
+	public:
+		int count;
+		QueueItem* recent;
+
+		Queue();
+		~Queue();
+		bool Empty();
+		void Add(Node* node, Node* predecessor, double metric);
+		QueueItem* Get();
+		bool Update(Node* node, Node* predecessor, double metric);
+		void Print();
 };
 #endif

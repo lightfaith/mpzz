@@ -1,5 +1,7 @@
 #include "classes.hpp"
 
+
+
 Node::Node(char* sid)
 {
 	//set ID
@@ -8,6 +10,8 @@ Node::Node(char* sid)
 	//set NULL predecessor and "infinite" distance
 	predecessor=NULL;
 	hopcount=INT_MAX;
+	used=false;
+	qi=NULL;
 }
 
 Node::~Node()
@@ -23,7 +27,7 @@ void Node::Print()
 		debug(2, "    Neighbor %s, distance %.3f", neighbors->nodes[i]->sid, neighbors->metrics[i]);
 }
 
-void Node::SetPredecessor(Node* n, float metric)
+void Node::SetPredecessor(Node* n, double metric)
 {
 	predecessor=n;
 	totalmetric=metric;
@@ -68,7 +72,7 @@ Connections::Connections()
 	count=0;
 	nodes = (Node**)malloc(max*sizeof(Node*));
 	memory->Add(nodes, MALLOC, false, "Cannot create list of neighbors.");
-	metrics = (float*)malloc(max*sizeof(float));
+	metrics = (double*)malloc(max*sizeof(double));
 	memory->Add(metrics, MALLOC, false, "Cannot create list of neighbor distances.");
 }
 
@@ -76,7 +80,7 @@ Connections::~Connections()
 {
 }
 
-void Connections::Add(Node* n, float m)
+void Connections::Add(Node* n, double m)
 {
 	debug(5, "Adding new connection to %s with metric of %.3f", n->sid, m);
 	//resize if necessary
@@ -92,7 +96,7 @@ void Connections::More()
 	max*=2;
 	Node** newnodes = (Node**)malloc(max*sizeof(Node*));
 	memory->Add(newnodes, MALLOC, true, "Cannot resize neighbor list.");
-	float* newmetrics = (float*)malloc(max*sizeof(float));
+	double* newmetrics = (double*)malloc(max*sizeof(double));
 	memory->Add(newmetrics, MALLOC, true, "Cannot resize neighbor distance list.");
 	for(int i=0; i<count; i++)
 	{
@@ -182,34 +186,38 @@ void Nodes::SPF(Node* root, const char* filename)
 	Node** used = (Node**)malloc(count*sizeof(Node*));
 	memory->Add(used, MALLOC, true, "Cannot prepare 'used' list for SPF.");
 	//list of usable (reachable) nodes
-	Node** usable = (Node**)malloc(count*sizeof(Node*));
-	memory->Add(usable, MALLOC, true, "Cannot prepare 'usable' list for SPF.");
+	//Node** usable = (Node**)malloc(count*sizeof(Node*));
+	//memory->Add(usable, MALLOC, true, "Cannot prepare 'usable' list for SPF.");
+	Queue* usable = new Queue();
+	memory->Add(usable, NEW, true, "Cannot prepare 'usable' queue for SPF.");
 	//metric for usable nodes
-	float* usablem = (float*)malloc(count*sizeof(float));
-	memory->Add(usablem, MALLOC, true, "Cannot prepare 'usablem' list for SPF.");
+	//float* usablem = (float*)malloc(count*sizeof(float));
+	//memory->Add(usablem, MALLOC, true, "Cannot prepare 'usablem' list for SPF.");
 	//number of used
 	int usedcount=0;
 	//number of usable
-	int usablecount=0;
-	int bestid=0; //best node from usables
-	float bestmetric; //metric of best node
-	bool found; //found flag
+	//int usablecount=0;
+	//int bestid=0; //best node from usables
+	//float bestmetric; //metric of best node
 	
 	debug(1, "SPF Algorithm for root '%s' started.", root->sid);
 	
 	//mark root usable
-	usablem[usablecount]=0;
-	usable[usablecount]=root;
-	usable[usablecount]->SetPredecessor(NULL, 0);
-	usablecount++;
+	//usablem[usablecount]=0;
+	usable->Add(root, NULL, 0);
+	//usable[usablecount]=root;
+	//usable[usablecount]->SetPredecessor(NULL, 0);
+	usable->recent->node->SetPredecessor(NULL, 0);
+	//usablecount++;
 	debug(9, "Root marked usable.");
 
 	//move best into used, its neighbors into usable etc...
 	//until no usable exists (finished or separated nodes)
-	while(usablecount>0)
+	//while(usablecount>0)
+	while(!usable->Empty())
 	{
 		//find best
-		bestmetric=usablem[0];
+		/*bestmetric=usablem[0];
 		for(int i=0; i<usablecount/2+1; i++)
 		{
 			if(usablem[i]<=bestmetric)
@@ -223,31 +231,38 @@ void Nodes::SPF(Node* root, const char* filename)
 				bestid=usablecount-i-1;
 			}
 		}
-		
-		debug(4, "  Found best: %s (metric %.3f).", usable[bestid]->sid, bestmetric);
+		*/
+		usable->Print();
+		QueueItem* best=usable->Get();
+		//debug(4, "  Found best: %s (metric %lf).", usable[bestid]->sid, bestmetric);
+		if(best!=NULL)
+		{
+			debug(4, "  Found best: %s (metric %lf).", best->node->sid, best->metric);
 		
 		//add it into used
-		used[usedcount]=usable[bestid];
+		//used[usedcount]=usable[bestid];
+		used[usedcount]=best->node;
+		best->node->used=true;
 		//remove from usable
-		usable[bestid]=usable[usablecount-1];
-		usablem[bestid]=usablem[usablecount-1];
-		usablecount--;
+		//usable[bestid]=usable[usablecount-1];
+		//usablem[bestid]=usablem[usablecount-1];
+		//usablecount--;
 		
-		debug(6, "    Usables before update:");
-		for(int i=0; i<usablecount; i++)
+		/*debug(6, "    Usables before update:");
+		for(int i=0; i<usable[usablecount]; i++)
 		{
-			debug(6, "      %s (metric %.3f)", usable[i]->sid, usablem[i]);
+			debug(6, "      %s (metric %lf)", usable[i]->sid, usablem[i]);
 		}
+		*/
 		//add neighbors into usable / update metric
-		for(int i=0; i<used[usedcount]->neighbors->count; i++)
-		{
-			//neighbor
-			Node* nei = used[usedcount]->neighbors->nodes[i];
-			//its metric
-			float met = used[usedcount]->neighbors->metrics[i];
-			found=false;
+			for(int i=0; i<used[usedcount]->neighbors->count; i++)
+			{
+				//neighbor
+				Node* nei = used[usedcount]->neighbors->nodes[i];
+				//its metric
+				float met = used[usedcount]->neighbors->metrics[i];
 
-			for(int j=0; j<usablecount; j++)
+			/*for(int j=0; j<usablecount; j++)
 			{
 				//found? update metric
 				if(nei==usable[j])
@@ -259,18 +274,19 @@ void Nodes::SPF(Node* root, const char* filename)
 					}
 					found=true;
 				}
-			}
-			//not found? check used...
-			if(!found)
-			{
-				for(int j=0; j<usedcount+1; j++)
-					if(nei==used[j])
-					{
-						found=true;
-						break;
-					}
-			}
+			}*/
 			
+				//if neighbor not used
+				if(!nei->used)
+				{
+					//try to update metric
+					if(usable->Update(nei, best->node, met+best->metric))
+					{
+						debug(6, "%s is predecessor of %s.", best->node->sid, nei->sid);
+					}
+				}
+			}
+		/*	
 			//still not found? add into usables :)
 			if(!found)
 			{
@@ -279,17 +295,20 @@ void Nodes::SPF(Node* root, const char* filename)
 				usable[usablecount]->SetPredecessor(used[usedcount], usablem[usablecount]);
 				usablecount++;
 			}
-		}
+		*/
+		
 		
 		debug(6, "    Usables after update:");
-		for(int i=0; i<usablecount; i++)
+		usable->Print();
+		/*for(int i=0; i<usablecount; i++)
 		{
-			debug(6, "      %s (metric %.3f)", usable[i]->sid, usablem[i]);
+			debug(6, "      %s (metric %lf)", usable[i]->sid, usablem[i]);
 		}
+		*/
 		usedcount++;
+		}
 	}
 	
-
 	//paths have been found, print results into file
 	debug(1, "Paths have been found. Writing output file...");
 	FILE *f = fopen(filename, "w");
@@ -411,3 +430,194 @@ Node* NodeHashMap::Find(const char* name)
 	return NULL;
 }
 
+// - - - - - - - - - - - - - - - - -
+QueueItem::QueueItem(Node* node, double metric, QueueItem* prev, QueueItem* next)
+{
+	this->node=node;
+	this->metric=metric;
+	this->prev=prev;
+	this->next=next;
+}
+
+
+void QueueItem::Update(double metric)
+{
+	this->metric=metric;
+}
+
+// - - - - - - - - - - - - - - - - - - - - 
+Queue::Queue()
+{
+	prehead = new QueueItem(NULL, 0, NULL, NULL);
+	memory->Add(prehead, NEW, true, "Cannot create queue because of memory issuses.");
+	//head=NULL;
+	recent=NULL;
+	count=0;
+}
+
+Queue::~Queue()
+{
+	QueueItem* i = prehead;
+	QueueItem* old;
+	while(1)
+	{
+		old=i;
+		if(old==NULL)
+			break;
+		i=i->next;	
+		memory->Free(old);
+	}
+	
+}
+
+bool Queue::Empty()
+{
+	return count==0;
+}
+
+void Queue::Add(Node* node, Node* predecessor, double metric)
+{
+	QueueItem* prev = prehead;
+	QueueItem* next;
+	QueueItem* qi;
+	
+	while(1)
+	{
+		next=prev->next;
+		//at the end => worst
+		if(next==NULL)
+		{
+			qi = new QueueItem(node, metric, prev, NULL);
+			break;
+		}
+		//better than next
+		if(metric<next->metric)
+		{
+			qi = new QueueItem(node, metric, prev, next);
+			break;
+		}
+		prev=prev->next;
+	}
+	if(prev!=NULL)
+		prev->next=qi;
+	if(next!=NULL)
+		next->prev=qi;
+	node->SetPredecessor(predecessor, metric);
+	memory->Add(qi, NEW, true, "Cannot create queue item!");
+	recent=qi;
+	count++;
+	node->qi=qi;
+}
+
+QueueItem* Queue::Get()
+{
+	QueueItem* result = prehead->next;
+	if(prehead->next!=NULL)
+	{
+		if(prehead->next->next!=NULL)
+			prehead->next->next->prev=prehead;
+		prehead->next=prehead->next->next;
+	}
+	count--;
+	if(result==NULL)
+		debug(6, "Returning null item from queue.");
+	else
+		debug(6, "Returning item %s (metric %lf) from queue.", result->node->sid, result->metric);
+	return result;
+}
+
+bool Queue::Update(Node* node, Node* predecessor, double metric)
+{
+	debug(7, "Trying to update metric of node %s to %lf", node->sid, metric);
+	if(node->qi==NULL) //new, cannot update
+	{
+		Add(node, predecessor, metric);
+		return true;
+	}
+	
+	if(node->qi->metric<metric)
+	{
+		debug(6, "Not updating metric, worse.");
+		return false;
+	}
+	
+	QueueItem* newprev=node->qi->prev;
+	if(node->qi->prev!=NULL)
+		node->qi->prev->next=node->qi->next;
+	if(node->qi->next!=NULL)
+		node->qi->next->prev=node->qi->prev;
+	while(newprev!=NULL)
+	{
+		if(newprev->metric>metric)
+		{
+			newprev=newprev->prev;
+			continue;
+		}
+		else
+		{
+			node->qi->next=newprev->next;
+			node->qi->prev=newprev;
+			newprev->next=node->qi;
+			if(node->qi->next!=NULL)
+				node->qi->next->prev=node->qi;
+			node->SetPredecessor(predecessor, metric);
+			return true;
+		}
+	}
+	/*{
+		
+		if(newprev->next==NULL) //end?? this is bad
+		{
+			debug(6, "Cannot update queue, something is broken.");
+			return false;
+		}
+		
+		if(newprev->next->node==node) //found myself, just update metric&pred
+		{
+			newprev->next->metric=metric;
+			node->SetPredecessor(predecessor, metric);
+			debug(6, "Node metric updated to %lf (queue not altered).", metric);
+			return true;
+		}
+		if(newprev->next->metric<metric) 
+		{
+			newprev=newprev->next;
+			continue;
+		}
+		
+		//if(newprev->next->node!=node) //searching for new place
+		//	newprev=newprev->next;
+		//if(prev->next->node!=node) //searching for actual place, else go for next
+		//{
+		//	prev=prev->next;
+		//	continue;
+		//}
+		
+		//found everything
+		//debug(1, "Qiparent of %s = qi of %s", node->sid, node->qiparent->node->sid);
+		QueueItem* actual=node->qiparent->next;
+		node->qiparent->next=actual->next;
+		actual->next=newprev->next;
+		newprev->next=actual;
+		
+		//prev->next=prev->next->next;
+		//actual->next=newprev->next;
+		//newprev->next=actual;
+		actual->node->SetPredecessor(predecessor, metric);
+		debug(6, "Node metric updated to %lf (and queue altered).", actual->metric);
+		break;
+	}
+	*/
+	return true;
+}
+
+void Queue::Print()
+{
+	debug(6, "Actual queue:");
+	QueueItem* q = prehead->next;
+	while(q!=NULL)
+	{
+		debug(6, "  Item %s, metric %lf", q->node->sid, q->metric);
+		q=q->next;
+	}
+}
