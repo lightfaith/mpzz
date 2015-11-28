@@ -8,6 +8,8 @@
 #include<limits.h>
 #include<errno.h>
 
+using namespace std;
+
 class Memory;
 class Generic
 {

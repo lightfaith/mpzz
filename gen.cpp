@@ -31,7 +31,7 @@ void gml(int nodes, const char* filename)
 			//skip sometimes to gain longer paths
 			if((rand()%100)<MISSRATIO)
 				continue;
-			fprintf(f, "  edge\n  [\n    source %d\n    target %d\n    value %lf\n  ]\n", i, j, (rand()%(nodes*100000)+1)/1000.0);
+			fprintf(f, "  edge\n  [\n    source %d\n    target %d\n    value %Lf\n  ]\n", i, j, (rand()%(nodes*100000)+1)/1000.0L);
 		}
 	}
 	fprintf(f, "]\n"); //end of graph
@@ -55,7 +55,7 @@ void csv(int nodes, const char* filename)
 			//skip sometimes to gain longer paths
 			if((rand()%100)<MISSRATIO)
 				continue;
-			fprintf(f, "%d;%d;%lf\n", i, j, (rand()%(nodes*100000)+1)/1000.0);
+			fprintf(f, "%d;%d;%Lf\n", i, j, (rand()%(nodes*100000)+1)/1000.0L);
 		}
 	}
 	if(fclose(f)==EOF)

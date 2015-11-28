@@ -14,8 +14,9 @@ class FileReader : Generic
 		FILE *f;
 	public:
 		
-		FileReader(const char* filename);
+		FileReader();
 		~FileReader();
+		void Init(const char* filename);
 		long GetFileSize();
 		char GetNext();
 		void Reset();

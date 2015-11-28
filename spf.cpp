@@ -8,18 +8,19 @@ Memory* memory;  //memory management structure
 void printusage(const char* program)
 {
 		printf("Usage: %s <inputfile> (gml|csv) <outputfile> <root> [<debuglevel> (0-9)]\n", program);
+		delete memory;
 		exit(1);	
 }
 
 int main(int argc, char** argv)
 {
+	memory = new (nothrow) Memory(100); //memory management structure
 	if(argc<5) //not enough arguments
 		printusage(argv[0]);
 	if(argc>5) //debug level provided, parse
 	debuglevel=atoi(argv[5]);
 	if(debuglevel<0 || debuglevel>9) //debug level weird
 		printusage(argv[0]);
-	memory = new Memory(100); //memory management structure
 
 	//choose method
 	int method=-1;
@@ -58,7 +59,7 @@ int main(int argc, char** argv)
 	//	printf("Bucket %d: %d items\n", i, nodes->hashmap->counts[i]);
 	if(nodes->count<100)
 		nodes->Print();
-	debug(2, "------------------------");
+	debug(2, "---------------------------------------");
 	//find root by name
 	Node* root = nodes->Find(argv[4]);
 	if(root==NULL)

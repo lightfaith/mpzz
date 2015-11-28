@@ -2,9 +2,21 @@
 #define BUFFSIZE 256
 #define REINDEXVALUE 1200
 
-FileReader::FileReader(const char* filename)
+FileReader::FileReader()
 {
-	memory->Add(this, NEW, true, "Cannot create FileReader!");
+	counter=0;
+	f=NULL;
+	inmemory=true;
+}
+
+FileReader::~FileReader()
+{
+	if(f!=NULL)
+		fclose(f);
+}
+
+void FileReader::Init(const char* filename)
+{
 	this->filename=filename;
 	//get file size for allocation
 	length = GetFileSize();
@@ -14,9 +26,7 @@ FileReader::FileReader(const char* filename)
 		delete memory;
 		exit(1);
 	}
-	counter=0;
-	inmemory=true;
-	f=NULL;
+	
 	//try to allocate space
 	content = (char*)malloc(length*sizeof(char)+1);
 	memory->Add(content, MALLOC, false, "Cannot allocate memory for file. File will be read by character.");
@@ -48,14 +58,6 @@ FileReader::FileReader(const char* filename)
 		fclose(f);
 		f=NULL;
 	}
-}
-
-FileReader::~FileReader()
-{
-	if(f!=NULL)
-		fclose(f);
-	//if(inmemory)
-	//	memory->Free(content);
 }
 
 long FileReader::GetFileSize()
@@ -110,11 +112,8 @@ long FileReader::GetLength()
 Nodes* gmlparse(const char* file)
 {
 	debug(1, "FILE %s will be parsed as GML...", file);
-	//long inputsize=getfilesize(file); //size of input file
-	//char* input = (char*)malloc(sizeof(char)*inputsize); //whole input string
-	//memory->Add(input, MALLOC, true, "Cannot allocate input buffer.");
-	//long inputcount=0; //char counter
-	Nodes* result = new Nodes(); //result Nodes structure
+
+	Nodes* result = new (nothrow) Nodes(); //result Nodes structure
 	memory->Add(result, NEW, true, "Cannot allocate node list.");
 	char* buffer = (char*)malloc(BUFFSIZE*sizeof(char)); //temporary buffer
 	memory->Add(buffer, MALLOC, true, "Cannot allocate temporary buffer.");
@@ -132,7 +131,7 @@ Nodes* gmlparse(const char* file)
 	memory->Add(tmpsourceid, MALLOC, true, "Cannot allocate temp srcid buffer.");
 	char* tmptargetid = (char*)malloc(BUFFSIZE*sizeof(char)); //temporary id of target
 	memory->Add(tmptargetid, MALLOC, true, "Cannot allocate temp dstid buffer.");
-	float tmpmetric; //temporary metric
+	long double tmpmetric; //temporary metric
 
 	//null those buffers
 	for(int i=0; i<BUFFSIZE; i++)
@@ -146,7 +145,9 @@ Nodes* gmlparse(const char* file)
 	debug(1, "Parsing started.");
 	
 	//read file
-	FileReader *fr = new FileReader(file); //adds itself to memory management
+	FileReader* fr = new (nothrow) FileReader();
+	memory->Add(fr, NEW, true, "Cannot create FileReader!");
+	fr->Init(file);
 	while(state<11)
 	{
 		c=fr->GetNext();
@@ -238,9 +239,9 @@ Nodes* gmlparse(const char* file)
 							memcpy(sid, tmpid, tmpidlen);
 							sid[tmpidlen]=0;
 							memory->Add(sid, MALLOC, true, "Cannot allocate node sid.");
-							Node* tmpnode = new Node(sid);
+							Node* tmpnode = new (nothrow) Node(sid);
 							memory->Add(tmpnode, NEW, true, "Cannot alloc tmpnode.");
-							Connections* tmpconn = new Connections();
+							Connections* tmpconn = new (nothrow) Connections();
 							memory->Add(tmpconn, NEW, true, "Cannot alloc tmpconn.");
 							tmpnode->neighbors=tmpconn;
 							result->Add(tmpnode);
@@ -309,22 +310,16 @@ Nodes* gmlparse(const char* file)
 						Node* tmpsource = result->Find(tmpsourceid);
 						Node* tmptarget = result->Find(tmptargetid);
 						if(tmpsource==NULL || tmptarget==NULL || tmpmetric<=0)
-						{
 							debug(8, "    Edge found is weird. Metric=%d. Skipping...", tmpmetric);
-						}
 						else
 						{
 							tmpsource->neighbors->Add(tmptarget, tmpmetric);
 							edgecount++;
 						}
 						if(tmpsource==NULL)
-						{
 							debug(8, "     tmpsource NULL (looked for '%s')", tmpsourceid);
-						}
 						if(tmptarget==NULL)
-						{
 							debug(8, "     tmptarget NULL (looked for '%s')", tmptargetid);
-						}
 						
 						debug(6, "   Correct keyword '%s'. Transiting to %d", buffer, state);
 					}
@@ -350,11 +345,11 @@ Nodes* gmlparse(const char* file)
 					debug(6, "     Loaded target of new edge: %s. Transiting to %d", buffer, state);
 					break;
 				}
-				case 10: //in edge[value, load metric (float)
+				case 10: //in edge[value, load metric
 				{
 					state=7;
 					tmpmetric=atof(buffer);
-					debug(6, "     Loaded metric of new edge: %.3f. Transiting to %d", tmpmetric, state);
+					debug(6, "     Loaded metric of new edge: %Lf. Transiting to %d", tmpmetric, state);
 					break;
 				}
 			} //end of state switch
@@ -392,23 +387,23 @@ Nodes* gmlparse(const char* file)
 Nodes* csvparse(const char* file)
 {
 	debug(1, "FILE %s will be parsed as CSV...", file);
-	Nodes* result = new Nodes();
+	Nodes* result = new (nothrow) Nodes(); //result
 	memory->Add(result, NEW, true, "Cannot allocate node list.");
-	char* buffer = (char*)malloc(BUFFSIZE*sizeof(char));
+	char* buffer = (char*)malloc(BUFFSIZE*sizeof(char)); //temporary buffer
 	memory->Add(buffer, MALLOC, true, "Cannot allocate temporary buffer.");
 
-	int edgecount=0;
+	int edgecount=0; //number of edges
 	int wordlen=0;	
 	int c; //single character
 	int state=0; //parsing state
-	char* tmpid1 = (char*)malloc(BUFFSIZE*sizeof(char));
+	char* tmpid1 = (char*)malloc(BUFFSIZE*sizeof(char)); //source id
 	memory->Add(tmpid1, MALLOC, true, "Cannot allocate temporary buffer for first ID.");
-	int tmpid1len;
-	char* tmpid2 = (char*)malloc(BUFFSIZE*sizeof(char));
+	unsigned int tmpid1len; //length of source id
+	char* tmpid2 = (char*)malloc(BUFFSIZE*sizeof(char)); //target id
 	memory->Add(tmpid2, MALLOC, true, "Cannot allocate temporary buffer for second ID.");
-	int tmpid2len;
-	float tmpmetric;
-	Node* lastsource=NULL;
+	unsigned int tmpid2len; //length of target id
+	long double tmpmetric; //metric
+	Node* lastsource=NULL; //last source (no need to search - saves time)
 
 	//null those buffers
 	for(int i=0; i<BUFFSIZE; i++)
@@ -419,68 +414,81 @@ Nodes* csvparse(const char* file)
 	}
 
 	debug(1, "Parsing started.");
-	FileReader *fr = new FileReader(file); //adds itself to memory management
+	FileReader *fr = new (nothrow) FileReader();
+	memory->Add(fr, NEW, true, "Cannot create FileReader!");
+	fr->Init(file);
 	while(1)
 	{
 		c=fr->GetNext();
 		if(c==0 && wordlen==0) //end of input? stop this madness!
 			break;
-		else if(c==0 || c==' '|| c=='\t' || c=='\n' || c=='\r' || c=='v') //whitespace, treat as new info
+		else if(c==0 || c==' '|| c=='\t' || c=='\n' || c=='\r' || c=='\v') //whitespace, treat as new info
 		{
 			if(state==2)
 			{
 				buffer[wordlen]=0;
 				state=0;
 				tmpmetric=atof(buffer);
-				debug(6, "    Loaded metric of new edge: %.3f. Transiting to %d.", tmpmetric, state);
+				debug(6, "Loaded metric of new edge: %Lf. Transiting to %d.", tmpmetric, state);
 				//now find associated nodes and update changes
-				
-				Node* source=NULL;
-				if(lastsource!=NULL)
-					if(strlen(lastsource->sid)==tmpid1len && strncmp(lastsource->sid, tmpid1, tmpid1len)==0)
-						source=lastsource;
-				if(source==NULL)
-					source = result->Find(tmpid1);
-				lastsource=source;
-				//brand new?
-				if(source==NULL)
+				if(tmpmetric<=0)
 				{
-					char* sid=(char*)malloc((tmpid1len+1)*sizeof(char));
-					memcpy(sid, tmpid1, tmpid1len);
-					sid[tmpid1len]=0;
-					memory->Add(sid, MALLOC, true, "Cannot allocate first node sid.");
-					source = new Node(sid);
-					memory->Add(source, NEW, true, "Cannot create new node.");
-					Connections* c = new Connections();
-					memory->Add(c, NEW, true, "Cannot create connections for node.");
-					source->neighbors=c;
-					result->Add(source);
-					if(result->count%REINDEXVALUE==0)
-					{
-						result->Reindex();
-					}
+					debug(8, "    Edge found is weird (metric %Lf). Skipping...", tmpmetric);
 				}
-				Node* target = result->Find(tmpid2);
-				//brand new?
-				if(target==NULL)
+				else
 				{
-					char* sid=(char*)malloc((tmpid2len+1)*sizeof(char));
-					memcpy(sid, tmpid2, tmpid2len);
-					sid[tmpid2len]=0;
-					memory->Add(sid, MALLOC, true, "Cannot allocate first node sid.");
-					target = new Node(sid);
-					memory->Add(target, NEW, true, "Cannot create new node.");
-					Connections* c = new Connections();
-					memory->Add(c, NEW, true, "Cannot create connections for node.");
-					target->neighbors=c;
-					result->Add(target);
-					if(result->count%REINDEXVALUE==0)
+					//try to find source (check last, search all known)
+					Node* source=NULL;
+					if(lastsource!=NULL)
+						if(strlen(lastsource->sid)==tmpid1len && strncmp(lastsource->sid, tmpid1, tmpid1len)==0)
+							source=lastsource;
+					if(source==NULL)
+						source = result->Find(tmpid1);
+					lastsource=source;
+					//brand new?
+					if(source==NULL)
 					{
-						result->Reindex();
+						//prepare id
+						char* sid=(char*)malloc((tmpid1len+1)*sizeof(char));
+						memcpy(sid, tmpid1, tmpid1len);
+						sid[tmpid1len]=0;
+						memory->Add(sid, MALLOC, true, "Cannot allocate first node sid.");
+						
+						source = new (nothrow) Node(sid);
+						memory->Add(source, NEW, true, "Cannot create new node.");
+						Connections* c = new (nothrow) Connections();
+						memory->Add(c, NEW, true, "Cannot create connections for node.");
+						source->neighbors=c;
+						result->Add(source);
+						//reindex hashtable if it's time
+						if(result->count%REINDEXVALUE==0)
+							result->Reindex();
 					}
+					//try to find target
+					Node* target = result->Find(tmpid2);
+					//brand new?
+					if(target==NULL)
+					{
+						//prepare id
+						char* sid=(char*)malloc((tmpid2len+1)*sizeof(char));
+						memcpy(sid, tmpid2, tmpid2len);
+						sid[tmpid2len]=0;
+						memory->Add(sid, MALLOC, true, "Cannot allocate first node sid.");
+			
+						target = new (nothrow) Node(sid);
+						memory->Add(target, NEW, true, "Cannot create new node.");
+						Connections* c = new (nothrow) Connections();
+						memory->Add(c, NEW, true, "Cannot create connections for node.");
+						target->neighbors=c;
+						result->Add(target);
+
+						//reindex hashtable if it's time
+						if(result->count%REINDEXVALUE==0)
+							result->Reindex();
+					}
+					source->neighbors->Add(target, tmpmetric);
+					edgecount++;
 				}
-				source->neighbors->Add(target, tmpmetric);
-				edgecount++;
 				wordlen=0;
 			}
 		}

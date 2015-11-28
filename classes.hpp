@@ -6,8 +6,6 @@
 #include<iostream>
 #include "lib.hpp"
 
-using namespace std;
-
 class Node;
 class Connections;
 class Nodes;
@@ -22,14 +20,14 @@ class Node : Generic
 		Connections* neighbors; 
 		Node* predecessor; //pointer to predecessor (towards root)
 		int hopcount; //number of nodes to root 
-		double totalmetric; //distance from root
+		long double totalmetric; //distance from root
 		bool used; //used in SPF
 		QueueItem* qi; //used in SPF
 
 		Node(char* sid);
 		~Node();
 		void Print();
-		void SetPredecessor(Node* n, double metric);
+		void SetPredecessor(Node* n, long double metric);
 		Node** GetPath(); // get all nodes from root to this Node
 };
 
@@ -41,11 +39,10 @@ class Connections : Generic
 	public:
 		int count; //actual number of nodes
 		Node** nodes; //array of pointers to nodes
-		double* metrics; //array of distance to each node
+		long double* metrics; //array of distance to each node
 		
 		Connections();
-		~Connections();
-		void Add(Node* n, double m);
+		void Add(Node* n, long double m);
 		void More(); //resizing method
 };
 
@@ -79,7 +76,7 @@ class NodeHashMap : Generic
 		Node*** buckets; //hashmap of pointers to nodes
 		
 		NodeHashMap(int max);
-		~NodeHashMap();
+		//~NodeHashMap();
 		void Add(Node* n);
 		void More(int bucket); //resizing function
 		void Free(); 
@@ -92,13 +89,13 @@ class QueueItem : Generic
 {
 	public:
 		Node* node;
-		double metric;
+		long double metric;
 		QueueItem* prev;
 		QueueItem* next;
 
-		QueueItem(Node* node, double metric, QueueItem* prev, QueueItem* next);
+		QueueItem(Node* node, long double metric, QueueItem* prev, QueueItem* next);
 		//~QueueItem();
-		void Update(double metric);
+		//void Update(long double metric);
 };
 
 class Queue : Generic
@@ -113,9 +110,9 @@ class Queue : Generic
 		Queue();
 		~Queue();
 		bool Empty();
-		void Add(Node* node, Node* predecessor, double metric);
+		void Add(Node* node, Node* predecessor, long double metric);
 		QueueItem* Get();
-		bool Update(Node* node, Node* predecessor, double metric);
+		bool Update(Node* node, Node* predecessor, long double metric);
 		void Print();
 };
 #endif

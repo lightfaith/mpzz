@@ -2,6 +2,7 @@
 
 Generic::~Generic(){}
 
+
 void debug(int level, const char* format, ...)
 {
 	//print info if wanted
@@ -14,26 +15,6 @@ void debug(int level, const char* format, ...)
 		fprintf(stdout, "\n");
 		va_end(args);
 	}
-}
-
-long getfilesize(const char* filename)
-{
-	//get size of file (not good for files 4GB+)
-	FILE *f = fopen(filename, "rt");
-	if(f==NULL)
-	{
-		printf("E: Unable to open file '%s'\n", filename);
-		delete memory;
-		return 0;
-	}
-	fseek(f, 0, SEEK_END);
-	long size=ftell(f);
-	if(fclose(f)==EOF)
-	{
-		printf("E: Unable to close file '%s'\n", filename);
-		return 0;
-	}	
-	return size;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - 
@@ -211,14 +192,6 @@ void Memory::FreeThis()
 
 int Memory::GetHash(void* p)
 {
-	// abs((pointer value)%(number of buckets))
-	/*
-	int hash = *((int*)(&p))%max;
-	if(hash<0)
-		hash=-hash;
-	debug(9, "###Memory hash for %p: %d", p, hash);
-	return hash;
-*/
 	// http://burtleburtle.net/bob/hash/integer.html
 	long long hash = *((int*)(&p));
 	hash += ~(hash<<15);
