@@ -131,7 +131,7 @@ Nodes* gmlparse(const char* file)
 	memory->Add(tmpsourceid, MALLOC, true, "Cannot allocate temp srcid buffer.");
 	char* tmptargetid = (char*)malloc(BUFFSIZE*sizeof(char)); //temporary id of target
 	memory->Add(tmptargetid, MALLOC, true, "Cannot allocate temp dstid buffer.");
-	long double tmpmetric; //temporary metric
+	long double tmpmetric=0; //temporary metric
 
 	//null those buffers
 	for(int i=0; i<BUFFSIZE; i++)
@@ -398,11 +398,11 @@ Nodes* csvparse(const char* file)
 	int state=0; //parsing state
 	char* tmpid1 = (char*)malloc(BUFFSIZE*sizeof(char)); //source id
 	memory->Add(tmpid1, MALLOC, true, "Cannot allocate temporary buffer for first ID.");
-	unsigned int tmpid1len; //length of source id
+	unsigned int tmpid1len=0; //length of source id
 	char* tmpid2 = (char*)malloc(BUFFSIZE*sizeof(char)); //target id
 	memory->Add(tmpid2, MALLOC, true, "Cannot allocate temporary buffer for second ID.");
-	unsigned int tmpid2len; //length of target id
-	long double tmpmetric; //metric
+	unsigned int tmpid2len=0; //length of target id
+	long double tmpmetric=0; //metric
 	Node* lastsource=NULL; //last source (no need to search - saves time)
 
 	//null those buffers

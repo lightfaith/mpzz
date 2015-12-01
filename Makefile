@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS= -Wall 
+CFLAGS= -O3 -Wall -Wno-strict-aliasing
 #CFLAGS= -fprofile-arcs -ftest-coverage
 #CFLAGS= -g -Wall
 
